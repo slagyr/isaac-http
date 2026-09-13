@@ -40,8 +40,12 @@
 
   pins {:doc  "Check sibling git pins against the configured module registry"
         :requires ([babashka.fs :as fs])
-        :task (let [sibling "../isaac-foundation/libexec/isaac"]
+        :task (let [bean-sibling "../isaac-foundation-8got/libexec/isaac"
+                    sibling      "../isaac-foundation/libexec/isaac"]
                 (cond
+                  (fs/executable? bean-sibling)
+                  (shell bean-sibling "modules" "pins")
+
                   (fs/executable? sibling)
                   (shell sibling "modules" "pins")
 
