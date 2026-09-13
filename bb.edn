@@ -19,7 +19,7 @@
         io.github.slagyr/isaac-foundation {:git/url "https://github.com/slagyr/isaac-foundation.git"
                                            :git/sha "ad0a97b7f039814dc92916299baf3c07a5b86f3a"}
         io.github.slagyr/isaac-agent {:git/url "https://github.com/slagyr/isaac-agent.git"
-                                      :git/sha "ad0a97b7f039814dc92916299baf3c07a5b86f3a"}
+                                      :git/sha "b6284e42ab37ccf971637d4dc791856c7fa231aa"}
         io.github.slagyr/isaac-foundation-spec {:git/url "https://github.com/slagyr/isaac-foundation.git"
                                                 :git/sha "ad0a97b7f039814dc92916299baf3c07a5b86f3a"
                                                 :deps/root "spec"}
