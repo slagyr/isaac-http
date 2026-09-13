@@ -7,19 +7,19 @@
     [isaac.config.berths :as berths]
     [isaac.config.loader :as loader]
     [isaac.config.runtime :as runtime]
-    [isaac.server.component.runtime :as server-runtime]
+    [isaac.http.component.runtime :as server-runtime]
     [isaac.reconfigurable :as reconfigurable]
     [isaac.logger :as log]
     [isaac.foundation.root-steps :as froot]
     [isaac.fs :as fs]
     [isaac.module.loader :as module-loader]
-    [isaac.server.app :as app]
+    [isaac.http.app :as app]
     [isaac.spec-helper :as helper]
     [isaac.nexus :as nexus]))
 
 (helper! isaac.configurator-steps)
 
-(def ^:private test-comm-module-id :isaac.server.test-comm)
+(def ^:private test-comm-module-id :isaac.http.test-comm)
 (def ^:private test-comm-module-coord {:local/root "spec-support"})
 
 (defn- ->slot-key [name]
@@ -40,8 +40,8 @@
     :else                                value))
 
 (defn- read-state [instance]
-  (let [test-comm? (requiring-resolve 'isaac.server.test-comm/test-comm?)
-        state      (requiring-resolve 'isaac.server.test-comm/state)]
+  (let [test-comm? (requiring-resolve 'isaac.http.test-comm/test-comm?)
+        state      (requiring-resolve 'isaac.http.test-comm/state)]
     (cond
       (test-comm? instance)        (state instance)
       (some-> (:state* instance))  @(:state* instance)
@@ -73,9 +73,9 @@
         (fs/spit fs* path (pr-str (assoc-in current [:modules test-comm-module-id] test-comm-module-coord)))))))
 
 (defn comm-is-registered [impl]
-  (let [ns-sym       'isaac.server.test-comm
+  (let [ns-sym       'isaac.http.test-comm
         _            (require ns-sym)
-        make-factory (requiring-resolve 'isaac.server.test-comm/make)]
+        make-factory (requiring-resolve 'isaac.http.test-comm/make)]
     (g/update! :server-config #(assoc-in (or % {}) [:modules test-comm-module-id] test-comm-module-coord))
     (persist-test-comm-module!)
     (comm-registry/register-factory! impl make-factory))
@@ -125,7 +125,7 @@
 (defn default-grover-setup []
   ;; Grover is a config-driven test provider (write-grover-defaults! below
   ;; writes models/grover.edn :provider :grover); isaac.llm.api.grover is not on
-  ;; isaac-server's test classpath, and install-test-fixture! was removed
+  ;; isaac-http's test classpath, and install-test-fixture! was removed
   ;; upstream anyway. These server tests exercise comm/reconcile, not the LLM.
   (froot/initialize-root! "target/test-state" true)
   (write-grover-defaults! (g/get :root))

@@ -1,16 +1,16 @@
-{:id        :isaac.server
+{:id        :isaac.http
  :version   "0.1.15"
  :builtin?  true
- :factory   isaac.server.module/create-module
+ :factory   isaac.http.module/create-module
 
- :berths    {:isaac.server/route {:description "HTTP routes. :path is a clout pattern (literal segments, :name params, * wildcards). :method is :get/:post/... or :* for any-method. Prefix matching is just a trailing wildcard in the path."
+ :berths    {:isaac.http/route {:description "HTTP routes. :path is a clout pattern (literal segments, :name params, * wildcards). :method is :get/:post/... or :* for any-method. Prefix matching is just a trailing wildcard in the path."
                                   :schema      {:type :seq
                                                 :spec {:type    :map
-                                                       :factory isaac.server.routes/register-route-entry!
+                                                       :factory isaac.http.routes/register-route-entry!
                                                        :schema  {:method  {:type :keyword :validations [:present?]}
                                                                  :path    {:type :string :validations [:present?]}
                                                                  :handler {:type :symbol :validations [:present?]}}}}}
-             :isaac.server/comm {:description "Communication channels (Discord, iMessage, ACP, …). Manifest contributions name available impls and carry the impl's :namespace (whose load implements isaac.comm.factory/create for that :type) plus its :extra-schema (extension fields composed into [:comms] slots of that :type). User-instantiated comm slots in the [:comms] config slot also count toward this berth, so `[:registered-in? :isaac.server/comm [:comms]]` accepts both manifest impl ids (the common :type values) and slot ids. :register-fn wires each live slot into comm-registry so the delivery worker can send outbound replies."
+             :isaac.http/comm {:description "Communication channels (Discord, iMessage, ACP, …). Manifest contributions name available impls and carry the impl's :namespace (whose load implements isaac.comm.factory/create for that :type) plus its :extra-schema (extension fields composed into [:comms] slots of that :type). User-instantiated comm slots in the [:comms] config slot also count toward this berth, so `[:registered-in? :isaac.http/comm [:comms]]` accepts both manifest impl ids (the common :type values) and slot ids. :register-fn wires each live slot into comm-registry so the delivery worker can send outbound replies."
                                  :register-fn   isaac.comm.registry/register-instance!
                                  :deregister-fn isaac.comm.registry/deregister-instance!
                                  :schema      {:type       :map
@@ -21,8 +21,8 @@
                                                                       :send-schema   {:type :schema-map}
                                                                       :configurable? {:type :boolean}}}}}}
 
- :isaac/component {:server-runtime {:namespace isaac.server.component.runtime}
-                   :http           {:namespace isaac.server.component.http}}
+ :isaac/component {:server-runtime {:namespace isaac.http.component.runtime}
+                   :http           {:namespace isaac.http.component.http}}
 
  :isaac/log-stream {:server {:file        "logs/server.log"
                             :description "HTTP server logs"}}
@@ -58,11 +58,11 @@
                    :value-spec  {:name           :comm
                                  :type           :map
                                  :factory        isaac.comm.factory/create!
-                                 :dynamic-schema {:berth :isaac.server/comm :path [:extra-schema]}
+                                 :dynamic-schema {:berth :isaac.http/comm :path [:extra-schema]}
                                  :schema         {:type {:type         :id
                                                          :options-from :comms
                                                          :description  "Manifest comm kind to instantiate"
-                                                         :validations  [[:registered-in? :isaac.server/comm [:comms]]]}
+                                                         :validations  [[:registered-in? :isaac.http/comm [:comms]]]}
                                                   :crew {:type        :id
                                                          :description "Crew id this comm routes into"
                                                          :validations [:crew-exists?]}}}}}}}

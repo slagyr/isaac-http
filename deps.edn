@@ -22,7 +22,7 @@
   :test      {:extra-paths ["spec" "test-resources"]
               :extra-deps  {io.github.slagyr/isaac-agent {:git/url "https://github.com/slagyr/isaac-agent.git"
                                                           :git/sha "b6284e42ab37ccf971637d4dc791856c7fa231aa"}
-                            io.github.slagyr/isaac-server-test-support {:local/root "spec-support"}
+                            io.github.slagyr/isaac-http-test-support {:local/root "spec-support"}
                             io.github.cleancoders/c3kit-wire           {:git/tag "2.5.1" :git/sha "1fae444"}
                             org.clojure/data.xml                       {:mvn/version "0.0.8"}
                             marigold.bridge/marigold.bridge            {:git/url   "https://github.com/slagyr/isaac-foundation.git"

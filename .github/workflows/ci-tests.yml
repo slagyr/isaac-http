@@ -15,7 +15,7 @@ jobs:
     env:
       NO_COLOR: "1"
     steps:
-      - name: Check out isaac-server
+      - name: Check out isaac-http
         uses: actions/checkout@v4
 
       - name: Check out isaac (platform classpath)

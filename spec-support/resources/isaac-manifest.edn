@@ -1,9 +1,9 @@
-{:id      :isaac.server.test-comm
+{:id      :isaac.http.test-comm
  :version "0.0.0"
  :factory isaac.module.protocol/module
 
- :isaac.server/comm
- {:test-comm {:namespace    isaac.server.test-comm
+ :isaac.http/comm
+ {:test-comm {:namespace    isaac.http.test-comm
               :extra-schema {:loft  {:type :string
                                      :validations [[:present-when? :type :test-comm]]}
                              :color {:type :string}

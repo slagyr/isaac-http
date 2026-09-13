@@ -45,15 +45,15 @@
 
   (it "the server manifest is pure data — clojure.edn parses it with no readers"
     (let [manifest (edn/read-string (slurp "resources/isaac-manifest.edn"))]
-      (should= :isaac.server (:id manifest))
+      (should= :isaac.http (:id manifest))
       (should= manifest (edn/read-string (pr-str manifest)))))
 
   (it "the server manifest only declares server-owned berths and CLI commands"
     (let [manifest (read-manifest "resources/isaac-manifest.edn")]
-      (should= #{:isaac.server/route :isaac.server/comm}
+      (should= #{:isaac.http/route :isaac.http/comm}
                 (set (keys (:berths manifest))))
       (should= #{:mcp-bridge} (set (keys (:isaac/cli manifest))))
-      (should-not (contains? manifest :isaac.server/route))
+      (should-not (contains? manifest :isaac.http/route))
       (should= #{:server :comms} (set (keys (:isaac.config/schema manifest))))))
 
   (it "every inline :isaac.config/schema contribution meta-validates"

@@ -17,7 +17,7 @@ Feature: Comm extension
       {:log    {:output :memory}
        :server {:hot-reload false}
        :crew   {:main {}}
-       :modules {:isaac.server.test-comm {:local/root "spec-support"}}
+       :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms  {:north-bot {:type :test-comm :crew :main :loft "north"}
                 :south-bot {:type :test-comm :crew :main :loft "south"}}}
       """

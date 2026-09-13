@@ -6,7 +6,7 @@
     [isaac.logger :as log]
     [isaac.fs :as fs]
     [isaac.module.loader :as module-loader]
-    [isaac.server.component.runtime :as server-runtime]
+    [isaac.http.component.runtime :as server-runtime]
     [isaac.nexus :as nexus]
     [speclj.core :refer :all]))
 

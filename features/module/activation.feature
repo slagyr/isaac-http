@@ -13,13 +13,13 @@ Feature: Module activation
       """
       {:log     {:output :memory}
        :server  {:hot-reload false}
-       :modules {:isaac.server.test-comm {:local/root "spec-support"}}
+       :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms   {:bert {:type :test-comm :loft "rooftop"}}}
       """
     When the Isaac server is started
     Then the log has entries matching:
       | level | event             | module           |
-      | :info | :module/activated | isaac.server.test-comm |
+      | :info | :module/activated | isaac.http.test-comm |
     And the log has entries matching:
       | level | event              | path       | impl  |
       | :info | :lifecycle/started | comms.bert | test-comm |
@@ -34,12 +34,12 @@ Feature: Module activation
       """
       {:log     {:output :memory}
        :server  {:hot-reload false}
-       :modules {:isaac.server.test-comm {:local/root "spec-support"}}}
+       :modules {:isaac.http.test-comm {:local/root "spec-support"}}}
       """
     When the Isaac server is started
     Then the log has entries matching:
       | level | event             | module           |
-      | :info | :module/activated | isaac.server.test-comm |
+      | :info | :module/activated | isaac.http.test-comm |
 
   Scenario: Module activation failure surfaces a structured error
     Given an empty Isaac root at "/tmp/isaac"
@@ -52,10 +52,10 @@ Feature: Module activation
       """
       {:log     {:output :memory}
        :server  {:hot-reload false}
-       :modules {:isaac.server.test-comm {:local/root "spec-support"}}
+       :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms   {:bert {:type :test-comm :loft "rooftop"}}}
       """
     When the Isaac server is started
     Then the log has entries matching:
       | level  | event                     | module           |
-      | :error | :module/activation-failed | isaac.server.test-comm |
+      | :error | :module/activation-failed | isaac.http.test-comm |

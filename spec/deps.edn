@@ -1,13 +1,13 @@
 ;; Subproject deps.edn — lets consumers pull the server spec tree
 ;; (step definitions, helpers) as a separate coordinate from production
-;; isaac-server via :deps/root "spec":
+;; isaac-http via :deps/root "spec":
 ;;
-;;   io.github.slagyr/isaac-server-spec
-;;     {:git/url "git@github.com:slagyr/isaac-server.git"
+;;   io.github.slagyr/isaac-http-spec
+;;     {:git/url "git@github.com:slagyr/isaac-http.git"
 ;;      :git/sha "..."
 ;;      :deps/root "spec"}
 ;;
-;; Production isaac-server (root deps.edn) keeps :paths ["src" "resources"]
+;; Production isaac-http (root deps.edn) keeps :paths ["src" "resources"]
 ;; and has no speclj/gherclj on its classpath.
 {:paths ["."]
  :deps  {speclj/speclj            {:mvn/version "3.13.0"}
