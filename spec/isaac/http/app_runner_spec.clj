@@ -25,6 +25,18 @@
                                         :value "unknown :type \"unknown-type\""}]})))
       (should-not @started?)))
 
+  (it "ignores pre-discovery comm errors after the discovered module validates the comm type"
+    (let [started (atom nil)
+          config  {:module-index {:isaac.http.test-comm
+                                  {:manifest {:isaac.http/comm {:test-comm {}}}}}}]
+      (with-redefs [runtime/valid-start? (constantly true)
+                    runner/start!        #(reset! started %)]
+        (sut/start! {:config        config
+                     :config-errors [{:key "comms[:bert]"
+                                      :path "comms.bert"
+                                      :value "unknown :type \"test-comm\""}]}))
+      (should= config (:config @started))))
+
   (it "delegates shutdown to Foundation"
     (with-redefs [runner/stop! (constantly ::stopped)]
       (should= ::stopped (sut/stop!))))
