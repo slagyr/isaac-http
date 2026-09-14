@@ -122,4 +122,13 @@
       (should= 0 (count (events :server/burst-detected)))
       (should= 401 (:status (unauth handler "203.0.113.9")))))
 
+  (it "detects a burst without the agent delivery queue on the classpath"
+    (with-redefs [burst/delivery-enqueue-fn (constantly nil)]
+      (let [handler (http/create-handler
+                      {:cfg {:server    {:auth  {:token token}
+                                         :burst (assoc burst-on :notify? true)}
+                             :attention {:notify {:comm :discord :target "ops"}}}})]
+        (dotimes [_ 30] (unauth handler "203.0.113.9"))
+        (should= 1 (count (events :server/burst-detected))))))
+
   )

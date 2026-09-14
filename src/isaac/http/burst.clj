@@ -3,7 +3,6 @@
    Absent :server :burst group = off. Memory only; no transcript, no disk."
   (:require
     [clojure.string :as str]
-    [isaac.comm.delivery.queue :as queue]
     [isaac.log.file :as log-file]
     [isaac.logger :as log]))
 
@@ -64,15 +63,23 @@
      :window-count      (count hits)
      :throttled-logged? (:throttled-logged? st)}))
 
+(defn delivery-enqueue-fn
+  "Agent-owned. Nil when isaac.comm.delivery.queue is not on the classpath."
+  []
+  (try (requiring-resolve 'isaac.comm.delivery.queue/enqueue!)
+       (catch Throwable _ nil)))
+
 (defn- enqueue-attention! [cfg content]
   (when-let [{:keys [comm target]} (get-in cfg [:attention :notify])]
     (when (and comm target)
-      (try
-        (queue/enqueue! {:comm    (if (string? comm) (keyword comm) comm)
-                         :target  target
-                         :content content})
-        (catch Exception e
-          (log/warn :server/burst-notify-failed :error-message (.getMessage e)))))))
+      (if-let [enqueue! (delivery-enqueue-fn)]
+        (try
+          (enqueue! {:comm    (if (string? comm) (keyword comm) comm)
+                     :target  target
+                     :content content})
+          (catch Exception e
+            (log/warn :server/burst-notify-failed :error-message (.getMessage e))))
+        (log/debug :server/burst-notify-skipped :reason :no-delivery-queue)))))
 
 (defn- notify-detected! [cfg client count window-ms paths]
   (let [path-part (when (seq paths)
