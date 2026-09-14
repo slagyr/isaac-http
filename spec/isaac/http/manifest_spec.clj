@@ -23,4 +23,4 @@
 
   (it "does not contribute the server log stream — that is foundation's"
     (let [manifest (edn/read-string (slurp "resources/isaac-manifest.edn"))]
-      (should= nil (:isaac/log-stream manifest))))))
+      (should= nil (:isaac/log-stream manifest)))))
