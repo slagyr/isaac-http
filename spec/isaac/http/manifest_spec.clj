@@ -19,4 +19,8 @@
   (it "is a builtin module"
     (let [manifest (edn/read-string (slurp "resources/isaac-manifest.edn"))]
       (should= :isaac.http (:id manifest))
-      (should (true? (:builtin? manifest))))))
+      (should (true? (:builtin? manifest)))))
+
+  (it "does not contribute the server log stream — that is foundation's"
+    (let [manifest (edn/read-string (slurp "resources/isaac-manifest.edn"))]
+      (should= nil (:isaac/log-stream manifest))))))

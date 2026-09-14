@@ -24,9 +24,6 @@
  :isaac/component {:server-runtime {:namespace isaac.http.component.runtime}
                    :http           {:namespace isaac.http.component.http}}
 
- :isaac/log-stream {:server {:file        "logs/server.log"
-                            :description "HTTP server logs"}}
-
  :isaac/cli {:mcp-bridge {:usage     "mcp-bridge [options]"
                           :summary   "stdio MCP server that proxies a turn to POST /mcp/turns/{id}"
                           :namespace isaac.mcp-bridge.cli}}
