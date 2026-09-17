@@ -3,6 +3,7 @@
     [c3kit.apron.refresh :as refresh]
     [isaac.component.factory :as component]
     [isaac.component.protocol :as protocol]
+    [isaac.config.loader :as loader]
     [isaac.logger :as log]
     [isaac.http.http :as http]
     [org.httpkit.server :as httpkit]))
@@ -28,7 +29,7 @@
               port         (or (:port opts) (:port server-cfg) 6674)
               handler-opts (assoc (dissoc opts :home)
                                   :root root
-                                  :cfg-fn (constantly config))
+                                  :cfg-fn #(or (loader/snapshot "http request config") config))
               handler      (if (:dev opts)
                              (dev-handler handler-opts)
                              (http/create-handler handler-opts))

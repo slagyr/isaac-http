@@ -2,7 +2,9 @@
   (:require
     [isaac.component.factory :as component]
     [isaac.component.protocol :as protocol]
-    [isaac.http.component.http :as sut]
+    [isaac.config.loader :as loader]
+    [isaac.http.component.http]
+    [isaac.logger :as log]
     [org.httpkit.server :as httpkit]
     [speclj.core :refer :all]))
 
@@ -23,6 +25,26 @@
           (should= 7123 (protocol/bound-port instance))
           (protocol/run-stop! instance)
           (should= ::server @stopped)))))
+
+  (it "reads the current auth token without restarting the listener"
+    (let [handler* (atom nil)
+          config*  (atom {:server {:auth {:token "marigold"}}})]
+      (with-redefs [httpkit/run-server (fn [handler _opts]
+                                         (reset! handler* handler)
+                                         ::server)
+                    loader/snapshot   (fn [_reason] @config*)]
+        (log/capture-logs
+          (let [instance (component/create :http {:config @config*
+                                                  :opts {:host "127.0.0.1" :port 0}})
+                request  (fn [token]
+                           (@handler* {:request-method :get
+                                       :uri "/status"
+                                       :headers {"authorization" (str "Bearer " token)}}))]
+            (protocol/run-start! instance)
+            (should= 200 (:status (request "marigold")))
+            (reset! config* {:server {:auth {:token "skybeam"}}})
+            (should= 401 (:status (request "marigold")))
+            (should= 200 (:status (request "skybeam"))))))))
 
   (it "does not bind when the runner disables HTTP"
     (let [started (atom false)]
