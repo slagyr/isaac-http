@@ -81,3 +81,29 @@ Feature: Server-wide inbound HTTP auth
     And the Isaac server is started
     When the client sends GET "/status" with header "Authorization: Bearer envt0ken"
     Then the response status is 200
+
+  @wip
+  Scenario: Old bearer is rejected after a token reload
+    Given config:
+      | server.host       | 0.0.0.0  |
+      | server.auth.token | marigold |
+      | server.hot-reload | true     |
+    And the Isaac server is started
+    When config is updated:
+      | path              | value   |
+      | server.auth.token | skybeam |
+    And the client sends GET "/status" with header "Authorization: Bearer marigold"
+    Then the response status is 401
+
+  @wip
+  Scenario: New bearer is accepted after a token reload
+    Given config:
+      | server.host       | 0.0.0.0  |
+      | server.auth.token | marigold |
+      | server.hot-reload | true     |
+    And the Isaac server is started
+    When config is updated:
+      | path              | value   |
+      | server.auth.token | skybeam |
+    And the client sends GET "/status" with header "Authorization: Bearer skybeam"
+    Then the response status is 200
