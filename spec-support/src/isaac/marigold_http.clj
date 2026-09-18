@@ -10,7 +10,7 @@
     [speclj.core :as speclj]))
 
 (def baseline-server-manifest
-  "HTTP host manifest — route berth and :server schema."
+  "HTTP host manifest — route berth and :http schema."
   {:id       :isaac.http
    :version  "0.1.0"
    :builtin? true
@@ -24,7 +24,7 @@
                                                                   :path    {:type :string :validations [:present?]}
                                                                   :handler {:type :symbol :validations [:present?]}}}}}}
 
-   :isaac.config/schema (select-keys config-schema/contributions [:server])})
+   :isaac.config/schema (select-keys config-schema/contributions [:http])})
 
 (def baseline-manifest baseline-server-manifest)
 

@@ -37,7 +37,7 @@
  {:http-principals {:fn isaac.http.auth/validate-principals}}
 
  :isaac.config/schema
- {:server {:schema {:name        :server
+ {:http {:schema {:name        :http
                     :type        :map
                     :description "HTTP server configuration"
                     :schema      {:auth       {:type        :map
@@ -57,10 +57,8 @@
                                                              :cooldown-ms {:type :int :description "Quiet period that ends a burst"}
                                                              :notify?     {:type :boolean :description "Post attention on burst start and end"}
                                                              :throttle?   {:type :boolean :description "Answer flagged clients with 429"}}}
-                                  :host       {:type :string :description "Bind host"}
-                                  :hot-reload {:type        :boolean
-                                               :description "Enable config hot-reload watcher"}
-                                  :port       {:type :int :description "Bind port"}}}}
+                                  :host  {:type :string :description "Bind host"}
+                                  :port  {:type :int :description "Bind port"}}}}
 
   :comms {:schema {:name        "comms table"
                    :type        :map

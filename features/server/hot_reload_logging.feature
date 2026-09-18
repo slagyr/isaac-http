@@ -7,8 +7,8 @@ Feature: Server hot-reload logging
     And config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | true   |
-      | server.port       | 0      |
+      | hot-reload | true   |
+      | http.port       | 0      |
     And the Isaac server is started
     Then the log has entries matching:
       | level | event                 | root                  | impl          |
@@ -19,12 +19,12 @@ Feature: Server hot-reload logging
     And config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | true   |
-      | server.port       | 0      |
+      | hot-reload | true   |
+      | http.port       | 0      |
     And the Isaac server is started
     When the isaac EDN file "config/isaac.edn" exists with:
       | path        | value     |
-      | server.host | 127.0.0.1 |
+      | http.host | 127.0.0.1 |
     And the isaac config is reloaded
     Then the log has entries matching:
       | level  | event                         | path      |
@@ -37,12 +37,12 @@ Feature: Server hot-reload logging
     And config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | true   |
-      | server.port       | 0      |
+      | hot-reload | true   |
+      | http.port       | 0      |
     And the Isaac server is started
     When the isaac EDN file "config/isaac.edn" exists with:
       | path        | value |
-      | server.port | abc   |
+      | http.port | abc   |
     Then the log has entries matching:
       | level  | event                         | path      |
       | :debug | :config.watch/change-detected | isaac.edn |

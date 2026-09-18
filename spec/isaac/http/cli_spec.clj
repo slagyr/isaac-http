@@ -88,9 +88,9 @@
       (should= 4000 (:port @started)))
 
     (it "loads config and passes it to app start as :cfg"
-      (swap! config-stub assoc-in [:config :server :auth :token] "s3cr3t")
+      (swap! config-stub assoc-in [:config :http :auth :token] "s3cr3t")
       (with-out-str (sut/run {}))
-      (should= "s3cr3t" (get-in @started [:cfg :server :auth :token])))
+      (should= "s3cr3t" (get-in @started [:cfg :http :auth :token])))
 
     (it "passes generic loader errors to app startup"
       (swap! config-stub assoc :errors [{:key "comms.bigbird"
@@ -102,14 +102,6 @@
       (let [output (with-out-str (sut/run {:port "5000"}))]
         (should (re-find #"5000" output))))
 
-    (it "logs hello before server/started"
-      (with-out-str (sut/run {:port "7000" :host "0.0.0.0"}))
-      (let [events (filter #(#{:server/hello :server/started} (:event %))
-                           @log/captured-logs)]
-        (should= 2 (count events))
-        (should= :server/hello (:event (first events)))
-        (should= :server/started (:event (second events)))))
-
     (it "logs hello with runtime, root, dev?, and pid"
       (with-out-str (sut/run {:port "7000"}))
       (let [hello (first (filter #(= :server/hello (:event %)) @log/captured-logs))]
@@ -119,13 +111,6 @@
         (should (string? (:root hello)))
         (should= false (:dev hello))
         (should (number? (:pid hello)))))
-
-    (it "logs server/started with host and port"
-      (with-out-str (sut/run {:port "7000" :host "0.0.0.0"}))
-      (let [started (first (filter #(= :server/started (:event %)) @log/captured-logs))]
-        (should-not-be-nil started)
-        (should= 7000 (:port started))
-        (should= "0.0.0.0" (:host started))))
 
     (it "enables dev mode from the ISAAC_DEV env var"
       (config/set-env-override! "ISAAC_DEV" "true")

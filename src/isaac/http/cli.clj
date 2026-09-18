@@ -77,7 +77,6 @@
                             :port          (when port (parse-long (str port)))
                             :host          host})]
         (do
-          (log/info :server/started :host started-host :port started-port)
           (println (str "Isaac server running on " started-host ":" started-port))
           (register-shutdown-hook!)
           (block!))
@@ -115,9 +114,3 @@
       opts)))
 
 ;; ----- :isaac/cli berth implementation -----
-
-(defmethod cli-api/run :server [_id opts]
-  (run-fn opts))
-
-(defmethod cli-api/option-spec :server [_id]
-  option-spec)

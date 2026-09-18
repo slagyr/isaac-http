@@ -7,8 +7,8 @@ Feature: HTTP component lifecycle
   Scenario: the HTTP listener is a component of isaac-http (isaac-vs6f)
     Given config:
       | key               | value |
-      | server.auth.token | test  |
-      | server.port       | 0     |
+      | http.auth.token | test  |
+      | http.port       | 0     |
     When the Isaac server is started
     Then the log has entries matching:
       | level | event              | component | module       |

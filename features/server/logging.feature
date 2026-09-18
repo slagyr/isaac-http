@@ -5,8 +5,8 @@ Feature: Server request logging
     Given config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | false  |
-      | server.port       | 0      |
+      | hot-reload | false  |
+      | http.port       | 0      |
     And the Isaac server is started
 
   Scenario: Successful request lifecycle is logged at debug

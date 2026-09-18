@@ -57,7 +57,7 @@
   (let [warned-auth* (atom ::none)]
     (fn [request]
       (let [cfg        (request-cfg opts)
-            auth-cfg   (get-in cfg [:server :auth])
+            auth-cfg   (get-in cfg [:http :auth])
             principals (auth/principals cfg)
             bearer     (bearer-token request)
             principal  (or (auth/authenticate cfg bearer) (verified-identity request))
@@ -80,17 +80,17 @@
             (cond-> response identity (assoc :isaac/principal identity)))
           (do
             (log/warn :auth/refused :principal (:name principal) :reason reason)
-            (when-let [burst-cfg (get-in cfg [:server :burst])]
+            (when-let [burst-cfg (get-in cfg [:http :burst])]
               (burst/record-unauthenticated! burst-cfg cfg (client-address request) (:uri request)))
             (refused-response status)))))))
 
 (defn wrap-burst
-  "Optional unauthenticated burst control. Absent :server :burst = off.
+  "Optional unauthenticated burst control. Absent :http :burst = off.
    Throttle (when on) answers a flagged client with 429 before auth."
   [opts handler]
   (fn [request]
     (let [cfg       (request-cfg opts)
-          burst-cfg (get-in cfg [:server :burst])]
+          burst-cfg (get-in cfg [:http :burst])]
       (if-not burst-cfg
         (handler request)
         (do

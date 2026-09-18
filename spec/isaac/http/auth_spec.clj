@@ -12,7 +12,7 @@
              (sut/sha256 "ci-secret")))
 
   (it "authenticates a matching principal and checks scopes"
-    (let [cfg {:server {:auth {:principals {:ci {:hash (sut/sha256 "ci-secret")
+    (let [cfg {:http {:auth {:principals {:ci {:hash (sut/sha256 "ci-secret")
                                                   :scopes #{:hail/send}}}}}}
           principal (sut/authenticate cfg "ci-secret")]
       (should= :ci (:name principal))
@@ -20,7 +20,7 @@
       (should-not (sut/authorized? principal :cli))))
 
   (it "synthesizes the legacy token as admin"
-    (let [principal (sut/authenticate {:server {:auth {:token "legacy"}}} "legacy")]
+    (let [principal (sut/authenticate {:http {:auth {:token "legacy"}}} "legacy")]
       (should= :admin (:name principal))
       (should (sut/authorized? principal :anything))))
 
@@ -34,9 +34,9 @@
     (should (sut/expired? "not-a-date")))
 
   (it "validates non-empty scopes and ISO expiration dates"
-    (should= {:errors [{:key "server.auth.principals.ci.scopes" :value "must not be empty"}
-                       {:key "server.auth.principals.ci.expires"
+    (should= {:errors [{:key "http.auth.principals.ci.scopes" :value "must not be empty"}
+                       {:key "http.auth.principals.ci.expires"
                         :value "must be an ISO date (YYYY-MM-DD)"}]}
              (sut/validate-principals
-               {:config {:server {:auth {:principals {:ci {:scopes #{} :expires "2026-99-99"}}}}}})))
+               {:config {:http {:auth {:principals {:ci {:scopes #{} :expires "2026-99-99"}}}}}})))
   )

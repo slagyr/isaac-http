@@ -31,7 +31,7 @@
 
 (defn -start-config-source [config root opts]
   (or (:config-change-source opts)
-      (when (and root (get-in config [:server :hot-reload]))
+      (when (and root (:hot-reload config))
         (runtime/watch-service-source root))))
 
 (defn -start-reloader! [source root host registries]
@@ -82,15 +82,15 @@
           deref))
 
 (defn valid-start? [config opts]
-  (let [host          (or (:host opts) (get-in config [:server :host]) "127.0.0.1")
+  (let [host          (or (:host opts) (get-in config [:http :host]) "127.0.0.1")
         start-http?   (not (false? (:start-http-server? opts)))
-        auth-token    (get-in config [:server :auth :token])]
+        auth-token    (get-in config [:http :auth :token])]
     (or (not start-http?)
              (http/loopback-host? host)
              (when (seq auth-token) true)
              (do (log/error :server/auth-required
                                      :host host
-                                     :message "missing :server :auth :token for non-loopback bind")
+                                     :message "missing :http :auth :token for non-loopback bind")
                  false))))
 
 (defmethod component-factory/create :server-runtime

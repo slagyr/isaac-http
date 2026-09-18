@@ -38,8 +38,8 @@
   (vals @*identity-verifiers*))
 
 (defn principals [cfg]
-  (let [configured (get-in cfg [:server :auth :principals] {})
-        legacy     (get-in cfg [:server :auth :token])]
+  (let [configured (get-in cfg [:http :auth :principals] {})
+        legacy     (get-in cfg [:http :auth :token])]
     (cond-> configured
       (and (seq legacy) (not (contains? configured :admin)))
       (assoc :admin {:hash (sha256 legacy) :scopes #{:*} :legacy? true}))))
@@ -68,12 +68,12 @@
           false))))
 
 (defn validate-principals [{:keys [config]}]
-  (let [principals (get-in config [:server :auth :principals])]
+  (let [principals (get-in config [:http :auth :principals])]
     {:errors
      (vec
        (mapcat
          (fn [[name principal]]
-           (let [prefix (str "server.auth.principals." (clojure.core/name name))]
+           (let [prefix (str "http.auth.principals." (clojure.core/name name))]
              (cond-> []
                (empty? (:scopes principal))
                (conj {:key (str prefix ".scopes") :value "must not be empty"})

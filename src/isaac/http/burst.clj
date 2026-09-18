@@ -1,6 +1,6 @@
 (ns isaac.http.burst
   "Per-client sliding window of unauthenticated responses.
-   Absent :server :burst group = off. Memory only; no transcript, no disk."
+   Absent :http :burst group = off. Memory only; no transcript, no disk."
   (:require
     [clojure.string :as str]
     [isaac.log.file :as log-file]

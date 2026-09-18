@@ -4,30 +4,30 @@
     [clojure.edn :as edn]
     [speclj.core :refer :all]))
 
-(defn- server-schema []
+(defn- http-schema []
   (-> "resources/isaac-manifest.edn"
       slurp
       edn/read-string
-      (get-in [:isaac.config/schema :server :schema])))
+      (get-in [:isaac.config/schema :http :schema])))
 
 (describe "config schema"
 
-  (it "server conforms"
+  (it "http conforms"
     (should= {:host "localhost" :port 8080}
-             (schema/conform (server-schema) {:host "localhost" :port 8080})))
+             (schema/conform (http-schema) {:host "localhost" :port 8080})))
 
-  (it "server conforms with nested auth token"
+  (it "http conforms with nested auth token"
     (should= {:host "localhost" :auth {:token "s3cr3t"}}
-             (schema/conform (server-schema) {:host "localhost" :auth {:token "s3cr3t"}})))
+             (schema/conform (http-schema) {:host "localhost" :auth {:token "s3cr3t"}})))
 
-  (it "server conforms with nested burst knobs"
+  (it "http conforms with nested burst knobs"
     (should= {:host  "localhost"
               :burst {:threshold   30
                       :window-ms   60000
                       :cooldown-ms 600000
                       :notify?     true
                       :throttle?   false}}
-             (schema/conform (server-schema)
+             (schema/conform (http-schema)
                              {:host  "localhost"
                               :burst {:threshold   30
                                       :window-ms   60000

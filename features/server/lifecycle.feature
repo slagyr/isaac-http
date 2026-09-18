@@ -8,7 +8,7 @@ Feature: Server lifecycle bookends
   Scenario: the console greets the crew on boot
     Given config:
       | key               | value |
-      | server.auth.token | shh   |
+      | http.auth.token | shh   |
     When the Isaac server is started
     Then the log has entries matching:
       | level | event         | runtime | version | root | dev   | pid |
@@ -17,7 +17,7 @@ Feature: Server lifecycle bookends
   Scenario: the runner records shutdown
     Given config:
       | key               | value |
-      | server.auth.token | shh   |
+      | http.auth.token | shh   |
     When the Isaac server is started
     And the Isaac server is stopped
     Then the log has entries matching:

@@ -12,7 +12,7 @@ Feature: Module activation
     And the isaac file "isaac.edn" exists with:
       """
       {:log     {:output :memory}
-       :server  {:hot-reload false}
+       :hot-reload false
        :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms   {:bert {:type :test-comm :loft "rooftop"}}}
       """
@@ -33,7 +33,7 @@ Feature: Module activation
     And the isaac file "isaac.edn" exists with:
       """
       {:log     {:output :memory}
-       :server  {:hot-reload false}
+       :hot-reload false
        :modules {:isaac.http.test-comm {:local/root "spec-support"}}}
       """
     When the Isaac server is started
@@ -51,7 +51,7 @@ Feature: Module activation
     And the isaac file "isaac.edn" exists with:
       """
       {:log     {:output :memory}
-       :server  {:hot-reload false}
+       :hot-reload false
        :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms   {:bert {:type :test-comm :loft "rooftop"}}}
       """

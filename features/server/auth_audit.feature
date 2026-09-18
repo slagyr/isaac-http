@@ -4,16 +4,16 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
   `isaac server auth list`. Notable auth events reach the attention comm the
   same way burst detection does (isaac-burst): first ever use of a principal,
   use of an expired or revoked secret, and a principal expiring within seven
-  days. Thresholds live under `:server :auth :alerts` and hot-reload.
+  days. Thresholds live under `:http :auth :alerts` and hot-reload.
 
   Background:
     Given an Isaac root at "target/auth-audit-state"
     And config:
       | key                     | value       |
       | log.output              | memory      |
-      | server.hot-reload       | true        |
-      | server.port             | 0           |
-      | server.host             | 0.0.0.0     |
+      | hot-reload              | true        |
+      | http.port               | 0           |
+      | http.host               | 0.0.0.0     |
       | attention.notify.comm   | discord     |
       | attention.notify.target | boiler-room |
     And principal "ci" is configured with secret "ci-secret" and scopes "hail/send"
@@ -121,7 +121,7 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
   @wip
   Scenario: alerts can be turned off per kind without a restart
     Given config:
-      | server.auth.alerts.first-use | false |
+      | http.auth.alerts.first-use | false |
     And the Isaac server is started
     When the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret"
     Then the response status is 200

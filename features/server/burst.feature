@@ -8,19 +8,19 @@ Feature: Unauthenticated burst control
   cooldown, :server/burst-ended with the total. Optionally (throttle? true,
   default false) a flagged client is answered with a bare 429 before the auth
   check for the cooldown — never for loopback or tailnet clients. Config is
-  the :server :burst group; absent group = off (isaac-udnm).
+  the :http :burst group; absent group = off (isaac-udnm).
 
   Background:
     Given an Isaac root at "target/burst-state"
     And config:
       | key                      | value       |
       | log.output               | memory      |
-      | server.hot-reload        | false       |
-      | server.port              | 0           |
-      | server.auth.token        | s3cr3t      |
-      | server.burst.threshold   | 30          |
-      | server.burst.window-ms   | 60000       |
-      | server.burst.cooldown-ms | 600000      |
+      | hot-reload        | false       |
+      | http.port              | 0           |
+      | http.auth.token        | s3cr3t      |
+      | http.burst.threshold   | 30          |
+      | http.burst.window-ms   | 60000       |
+      | http.burst.cooldown-ms | 600000      |
       | attention.notify.comm    | discord     |
       | attention.notify.target  | boiler-room |
     And the Isaac server is started
@@ -70,7 +70,7 @@ Feature: Unauthenticated burst control
   Scenario: throttle answers a flagged client with a bare 429 before auth, others unaffected
     Given config:
       | key                    | value |
-      | server.burst.throttle? | true  |
+      | http.burst.throttle? | true  |
     And the Isaac server is started
     When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 30 times
     And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 1 times
@@ -88,7 +88,7 @@ Feature: Unauthenticated burst control
   Scenario: loopback is never throttled
     Given config:
       | key                    | value |
-      | server.burst.throttle? | true  |
+      | http.burst.throttle? | true  |
     And the Isaac server is started
     When the client sends GET "/.env" 31 times
     Then the response status is 401
@@ -97,7 +97,7 @@ Feature: Unauthenticated burst control
       | :server/burst-throttled |
 
   Scenario: config schema lists the burst knobs
-    When isaac is run with "config schema server.burst"
+    When isaac is run with "config schema http.burst"
     Then the stdout matches:
       | pattern      |
       | :threshold   |

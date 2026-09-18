@@ -38,7 +38,7 @@
   (it "loads config from the in-memory fs at the virtual home"
     (let [started      (atom nil)
           virtual-home "/target/test-state"
-          cfg          {:server {:port 7788}}]
+          cfg          {:http {:port 7788}}]
       (g/assoc! :mem-fs (nexus/get :fs))
       (g/assoc! :root virtual-home)
       (fs/mkdirs (nexus/get :fs) (str virtual-home "/config"))
@@ -48,13 +48,13 @@
                                  {:port 7788 :host "0.0.0.0"})
                     app/stop!  (fn [] nil)]
         (sut/server-running))
-      (should= 7788 (get-in (:config @started) [:server :port]))
+      (should= 7788 (get-in (:config @started) [:http :port]))
       (should= virtual-home (:root @started))))
 
   (it "can skip binding a real port for reload-only scenarios"
     (let [started      (atom nil)
           virtual-home "/target/test-state"
-          cfg          {:server {:port 7788}}]
+          cfg          {:http {:port 7788}}]
       (g/assoc! :mem-fs (nexus/get :fs))
       (g/assoc! :root virtual-home)
       (g/assoc! :bind-server-port? false)
@@ -70,7 +70,7 @@
 
   (it "disables the async config reloader so sync-config-reload! is sole consumer"
     (let [started (atom nil)
-          cfg     {:server {:hot-reload true :port 7788}}]
+          cfg     {:http {:hot-reload true :port 7788}}]
       (g/assoc! :mem-fs (nexus/get :fs))
       (g/assoc! :root "/target/test-state")
       (fs/mkdirs (nexus/get :fs) "/target/test-state/config")
@@ -96,7 +96,7 @@
 
   (it "runs the server command step without binding the real port"
     (g/assoc! :server-config {:log {:output :memory}
-                              :server {:hot-reload false}})
+                              :http {:hot-reload false}})
     (let [socket (ServerSocket.)]
       (.bind socket (InetSocketAddress. (InetAddress/getByName "127.0.0.1") 0))
       (let [port (.getLocalPort socket)]

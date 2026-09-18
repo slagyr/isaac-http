@@ -33,7 +33,7 @@
           source   ::source
           instance (component-factory/create
                      :server-runtime
-                     {:config {:server {:hot-reload true}}
+                     {:config {:http {:hot-reload true}}
                       :root   "/isaac"
                       :opts   {:config-change-source source}
                       :module-index {:isaac.http {}}})]
@@ -56,7 +56,7 @@
     (let [reloaded (promise)
           instance (component-factory/create
                      :server-runtime
-                     {:config {:server {:hot-reload true}}
+                     {:config {:http {:hot-reload true}}
                       :root   "/isaac"
                       :opts   {:config-change-source ::source}
                       :module-index {}})]

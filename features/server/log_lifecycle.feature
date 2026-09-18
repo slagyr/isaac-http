@@ -11,8 +11,8 @@ Feature: Server log file lifecycle
     Given config:
       | key               | value |
       | logging.output    | file  |
-      | server.port       | 0     |
-      | server.hot-reload | false |
+      | http.port       | 0     |
+      | hot-reload | false |
     When the Isaac server is started
     Then the isaac file "logs/server.log" exists
 
@@ -20,9 +20,9 @@ Feature: Server log file lifecycle
     Given config:
       | key               | value |
       | logging.output    | file  |
-      | server.port       | 0     |
-      | server.hot-reload | false |
-      | server.auth.token | test  |
+      | http.port       | 0     |
+      | hot-reload | false |
+      | http.auth.token | test  |
     When the server command is run on port 0
     Then the isaac file "logs/server.log" exists
 
@@ -30,9 +30,9 @@ Feature: Server log file lifecycle
     Given config:
       | key               | value |
       | logging.output    | file  |
-      | server.port       | 0     |
-      | server.hot-reload | false |
-      | server.auth.token | test  |
+      | http.port       | 0     |
+      | hot-reload | false |
+      | http.auth.token | test  |
     When the server command is run on port 0
     Then the isaac file "logs/server.log" exists with log entries
     And the isaac log file "logs/cli.log" has no server-origin entries
@@ -44,8 +44,8 @@ Feature: Server log file lifecycle
     And config:
       | key               | value |
       | logging.output    | file  |
-      | server.port       | 0     |
-      | server.hot-reload | false |
+      | http.port       | 0     |
+      | hot-reload | false |
     When the Isaac server is started
     Then the isaac file "logs/server-20260628.log" exists
     And the isaac file "logs/server.log" exists with log entries
@@ -55,8 +55,8 @@ Feature: Server log file lifecycle
       | key                 | value |
       | logging.output      | file  |
       | logging.max-bytes   | 2000  |
-      | server.port         | 0     |
-      | server.hot-reload   | false |
+      | http.port         | 0     |
+      | hot-reload   | false |
     And the clock is fixed at "2026-06-29T12:00:00Z"
     And the isaac file "logs/server.log" exists with 100 log entries
     When the Isaac server is started
@@ -68,8 +68,8 @@ Feature: Server log file lifecycle
       | key               | value |
       | logging.output    | file  |
       | logging.max-days  | 30    |
-      | server.port       | 0     |
-      | server.hot-reload | false |
+      | http.port       | 0     |
+      | hot-reload | false |
     And a file "logs/server-20260401.log" exists with content "old"
     And a file "logs/server-20260601.log" exists with content "keep"
     And the clock is fixed at "2026-06-29T12:00:00Z"

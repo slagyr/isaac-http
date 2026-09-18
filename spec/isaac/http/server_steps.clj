@@ -268,7 +268,7 @@
             fs*       (server-fs)]
         (fs/mkdirs fs* (fs/parent file-path))
         (fs/spit fs* file-path
-                 (pr-str (assoc-in data [:server :auth :principals (keyword principal-name)] principal)))
+                 (pr-str (assoc-in data [:http :auth :principals (keyword principal-name)] principal)))
         (notify-config-change! file-path)))))
 
 (defn- parse-scopes [scopes]
@@ -293,7 +293,7 @@
             data      (or (isaac-file-data "isaac.edn") {})
             fs*       (server-fs)]
         (fs/spit fs* file-path
-                 (pr-str (update-in data [:server :auth :principals] dissoc (keyword principal-name))))
+                 (pr-str (update-in data [:http :auth :principals] dissoc (keyword principal-name))))
         (notify-config-change! file-path)))))
 
 (defn fixture-route
@@ -465,11 +465,11 @@
                          :dev                  (= "true" (loader/env "ISAAC_DEV"))
                          :fs                   (server-fs)
                          :host                 (:host cfg)
-                         ;; Explicit :server :port in the scenario's config is honored;
+                         ;; Explicit :http :port in the scenario's config is honored;
                          ;; otherwise bind ephemerally so suites never collide with a
                          ;; live isaac on the default port.
                          :port                 (if run-server?
-                                                 (or (get-in cfg-map [:server :port]) 0)
+                                                 (or (get-in cfg-map [:http :port]) 0)
                                                  0)
                          :root            runtime-state
                         :start-http-server?   run-server?}]
@@ -573,7 +573,7 @@
 
 (defn- request-base-url []
   (let [port (g/get :server-port)
-        host (or (get-in (g/get :server-config) [:server :host]) "localhost")
+        host (or (get-in (g/get :server-config) [:http :host]) "localhost")
         host (if (= "::1" host) "[::1]" "localhost")]
     (str "http://" host ":" port)))
 
@@ -622,7 +622,7 @@
 
 (defn- use-direct-http? []
   (let [port (g/get :server-port)
-        host (or (get-in (current-server-config) [:server :host]) "127.0.0.1")]
+        host (or (get-in (current-server-config) [:http :host]) "127.0.0.1")]
     (or (not (pos? (long (or port 0))))
         (some? (g/get :current-time))
         (contains? #{"::1" "0:0:0:0:0:0:0:1"} host))))
@@ -853,7 +853,7 @@
 
 (defgiven "server config:" isaac.http.server-steps/server-config-applied
   "Applies server harness settings from a key/value table (log.output,
-   server.* keys, bind-server-port, in-memory :server-config).")
+   http.* keys, bind-server-port, in-memory :server-config).")
 
 (defwhen "the isaac EDN file {path:string} is removed" isaac.http.server-steps/isaac-edn-file-removed
   "Deletes the EDN file at <root>/.isaac/<path> and fires a config-change

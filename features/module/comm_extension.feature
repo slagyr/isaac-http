@@ -15,7 +15,7 @@ Feature: Comm extension
     And the isaac file "isaac.edn" exists with:
       """
       {:log    {:output :memory}
-       :server {:hot-reload false}
+       :hot-reload false
        :crew   {:main {}}
        :modules {:isaac.http.test-comm {:local/root "spec-support"}}
        :comms  {:north-bot {:type :test-comm :crew :main :loft "north"}

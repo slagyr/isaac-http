@@ -7,13 +7,13 @@ Feature: Server Dev Reload
     And server config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | false  |
+      | hot-reload | false  |
 
   Scenario: Dev mode wraps the root handler with refresh
     Given environment variable "ISAAC_DEV" is "true"
     And server config:
       | key         | value |
-      | server.port | 0     |
+      | http.port | 0     |
     And the Isaac server is started
     When a GET request is made to "/status"
     Then the log has entries matching:
@@ -24,7 +24,7 @@ Feature: Server Dev Reload
     Given environment variable "ISAAC_DEV" is "false"
     And server config:
       | key         | value |
-      | server.port | 0     |
+      | http.port | 0     |
     And the Isaac server is started
     When a GET request is made to "/status"
     Then the log has no entries matching:
@@ -35,9 +35,11 @@ Feature: Server Dev Reload
     Given environment variable "ISAAC_DEV" is "false"
     And server config:
       | key         | value |
-      | server.port | 0     |
+      | http.port | 0     |
     When the server command is run with args "--dev"
     Then the log has entries matching:
       | level | event                    |
       | :info | :server/dev-mode-enabled |
-      | :info | :server/started          |
+    And the log has entries matching:
+      | level | event           |
+      | :info | :http/listening |

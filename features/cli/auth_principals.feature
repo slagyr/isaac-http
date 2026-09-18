@@ -1,5 +1,5 @@
 Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
-  `isaac server auth mint|rotate|revoke|list` manages `:server :auth :principals`.
+  `isaac server auth mint|rotate|revoke|list` manages `:http :auth :principals`.
   The secret is a one-time event: mint/rotate print it exactly once, on stdout,
   alone; only its SHA-256 hash is written to config (through the config
   mutation API, so a running server picks it up on hot reload). The secret
@@ -15,8 +15,8 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
     And the stdout has exactly 1 line
     And the stdout line is a bearer secret of at least 32 characters
     And the config file "config/isaac.edn" does not contain the printed secret
-    And the isaac config path "server.auth.principals.ci.hash" matches "sha256:[0-9a-f]{64}"
-    And the isaac config path "server.auth.principals.ci.scopes" is "#{:hail/send}"
+    And the isaac config path "http.auth.principals.ci.hash" matches "sha256:[0-9a-f]{64}"
+    And the isaac config path "http.auth.principals.ci.scopes" is "#{:hail/send}"
     And the log has no entries matching:
       | message                    |
       | #".*<the printed secret>.*" |
@@ -36,7 +36,7 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
   Scenario: mint with --expires records the expiry
     When isaac is run with "server auth mint ci --scopes hail/send --expires 2027-01-31"
     Then the exit code is 0
-    And the isaac config path "server.auth.principals.ci.expires" is "2027-01-31"
+    And the isaac config path "http.auth.principals.ci.expires" is "2027-01-31"
 
   @wip
   Scenario: mint refuses an existing name
@@ -73,8 +73,8 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
     When isaac is run with "server auth rotate ci --overlap 24h"
     Then the exit code is 0
-    And the isaac config path "server.auth.principals.ci@prev.expires" matches "20[0-9]{2}-[0-9]{2}-[0-9]{2}T.*"
-    And the isaac config path "server.auth.principals.ci@prev.scopes" is "#{:hail/send}"
+    And the isaac config path "http.auth.principals.ci@prev.expires" matches "20[0-9]{2}-[0-9]{2}-[0-9]{2}T.*"
+    And the isaac config path "http.auth.principals.ci@prev.scopes" is "#{:hail/send}"
     When the Isaac server is started
     And the client sends GET "/fixture/scoped" with header "Authorization: Bearer old-secret"
     Then the response status is 200
@@ -88,8 +88,8 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
     And principal "ci@prev" is configured with secret "older-secret" and scopes "hail/send" expiring "2099-01-01"
     When isaac is run with "server auth revoke ci"
     Then the exit code is 0
-    And the isaac config path "server.auth.principals.ci" is absent
-    And the isaac config path "server.auth.principals.ci@prev" is absent
+    And the isaac config path "http.auth.principals.ci" is absent
+    And the isaac config path "http.auth.principals.ci@prev" is absent
 
   @wip
   Scenario: revoke of an unknown principal is an error
@@ -112,8 +112,8 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
   @wip
   Scenario: a running server honours a principal minted from the CLI without a restart
     Given config:
-      | server.host       | 0.0.0.0 |
-      | server.hot-reload | true    |
+      | http.host   | 0.0.0.0 |
+      | hot-reload | true    |
     And principal "admin" is configured with secret "root-secret" and scopes "*"
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
     And the Isaac server is started

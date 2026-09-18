@@ -4,8 +4,8 @@ Feature: Server status endpoint
   Scenario: GET /status returns 200 with JSON services
     Given config:
       | key               | value |
-      | server.hot-reload | false |
-      | server.port       | 0     |
+      | hot-reload | false |
+      | http.port       | 0     |
     And the Isaac server is started
     When a GET request is made to "/status"
     Then the response status is 200

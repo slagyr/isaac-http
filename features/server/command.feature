@@ -5,7 +5,7 @@ Feature: Server startup command
     Given server config:
       | key               | value  |
       | log.output        | memory |
-      | server.hot-reload | false  |
+      | hot-reload | false  |
 
   Scenario: server command logs hello before startup
     When the server command is run on port 9876

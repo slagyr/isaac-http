@@ -24,7 +24,7 @@
   (start [_]
     (let [{:keys [config opts root]} ctx]
       (when-not (false? (:start-http-server? opts))
-        (let [server-cfg   (:server config)
+        (let [server-cfg   (:http config)
               host         (or (:host opts) (:host server-cfg) "127.0.0.1")
               port         (or (:port opts) (:port server-cfg) 6674)
               handler-opts (assoc (dissoc opts :home)
@@ -34,7 +34,8 @@
                              (dev-handler handler-opts)
                              (http/create-handler handler-opts))
               server       (httpkit/run-server handler {:port port :ip host :legacy-return-value? false})]
-          (reset! server* server)))))
+          (reset! server* server)
+          (log/info :http/listening :host host :port (httpkit/server-port server))))))
   (stop [_]
     (when-let [server @server*]
       (if (fn? server)

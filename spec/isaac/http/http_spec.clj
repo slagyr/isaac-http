@@ -11,14 +11,14 @@
   (describe "auth middleware"
 
     (it "rejects a non-loopback request with no bearer token when server auth is configured"
-      (let [handler  (sut/create-handler {:cfg {:server {:host "0.0.0.0"
+      (let [handler  (sut/create-handler {:cfg {:http {:host "0.0.0.0"
                                                          :auth {:token "s3cr3t"}}}})
             response (handler {:request-method :get :uri "/status" :headers {}})]
         (should= 401 (:status response))
         (should= "Bearer" (get-in response [:headers "WWW-Authenticate"]))))
 
     (it "allows a matching bearer token on a non-loopback request"
-      (let [handler  (sut/create-handler {:cfg {:server {:host "0.0.0.0"
+      (let [handler  (sut/create-handler {:cfg {:http {:host "0.0.0.0"
                                                          :auth {:token "s3cr3t"}}}})
             response (handler {:request-method :get
                                :uri            "/status"
@@ -26,7 +26,7 @@
         (should= 200 (:status response))))
 
     (it "enforces a configured token even on a loopback bind"
-      (let [handler  (sut/create-handler {:cfg {:server {:host "127.0.0.1"
+      (let [handler  (sut/create-handler {:cfg {:http {:host "127.0.0.1"
                                                          :auth {:token "s3cr3t"}}}})
             response (handler {:request-method :get :uri "/status" :headers {}})]
         (should= 401 (:status response))))
@@ -34,14 +34,14 @@
     (helper/with-captured-logs)
 
     (it "warns once for a legacy token until auth config changes"
-      (let [config* (atom {:server {:auth {:token "marigold"}}})
+      (let [config* (atom {:http {:auth {:token "marigold"}}})
             handler (sut/create-handler {:cfg-fn #(identity @config*)})
             request {:request-method :get :uri "/status"
                      :headers {"authorization" "Bearer marigold"}}]
         (handler request)
         (handler request)
         (should= 1 (count (filter #(= :auth/legacy-token (:event %)) @log/captured-logs)))
-        (reset! config* {:server {:auth {:token "skybeam"}}})
+        (reset! config* {:http {:auth {:token "skybeam"}}})
         (handler (assoc-in request [:headers "authorization"] "Bearer skybeam"))
         (should= 2 (count (filter #(= :auth/legacy-token (:event %)) @log/captured-logs)))))
 
@@ -57,7 +57,7 @@
 
     (it "maps a handler scope refusal to 403"
       (let [handler  (sut/create-handler
-                       {:cfg {:server {:auth {:principals
+                       {:cfg {:http {:auth {:principals
                                              {:ci {:hash (isaac.http.auth/sha256 "marigold")
                                                    :scopes #{:hail/send}}}}}}
                         :handler (fn [request]

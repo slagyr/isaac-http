@@ -9,8 +9,8 @@ Feature: The mcp-bridge command
   Background:
     Given an Isaac root at "target/test-state"
     And config:
-      | server.host       | 127.0.0.1 |
-      | server.auth.token | s3cr3t    |
+      | http.host       | 127.0.0.1 |
+      | http.auth.token | s3cr3t    |
     And the Isaac server is started
 
   Scenario: mcp-bridge auth failure on tools/list is a JSON-RPC error, never plain text (isaac-o2fh)

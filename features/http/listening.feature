@@ -1,4 +1,3 @@
-@wip
 Feature: HTTP bind logging
   The HTTP listener logs `:http/listening` with the bound host and
   port. Process start does not.

@@ -129,7 +129,7 @@
   ;; upstream anyway. These server tests exercise comm/reconcile, not the LLM.
   (froot/initialize-root! "target/test-state" true)
   (write-grover-defaults! (g/get :root))
-  (g/update! :server-config #(merge (or % {}) {:server {:hot-reload true}})))
+  (g/update! :server-config #(merge (or % {}) {:hot-reload true})))
 
 (defn- deep-merge [a b]
   (cond
