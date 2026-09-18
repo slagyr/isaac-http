@@ -31,6 +31,7 @@
     [isaac.http.app :as app]
     [isaac.http.lifecycle :as lifecycle]
     [isaac.http.burst :as burst]
+    [isaac.http.auth :as auth]
     [isaac.http.http :as server-http]
     [isaac.http.routes :as routes]
     [isaac.step-tables :as match]
@@ -252,6 +253,64 @@
 
 ;; region ----- Setup -----
 
+(defn fixture-ok-handler [_request]
+  {:status 200 :headers {"Content-Type" "text/plain"} :body "OK"})
+
+(defn fixture-fine-scope-handler [request]
+  (auth/require-scope! request :hail/prompt-override)
+  (fixture-ok-handler request))
+
+(defn- persist-principal! [principal-name principal]
+  (with-server-fs
+    (fn []
+      (let [file-path (isaac-file-path "isaac.edn")
+            data      (or (isaac-file-data "isaac.edn") {})
+            fs*       (server-fs)]
+        (fs/mkdirs fs* (fs/parent file-path))
+        (fs/spit fs* file-path
+                 (pr-str (assoc-in data [:server :auth :principals (keyword principal-name)] principal)))
+        (notify-config-change! file-path)))))
+
+(defn- parse-scopes [scopes]
+  (->> (str/split scopes #",")
+       (map str/trim)
+       (remove str/blank?)
+       (map #(if (= "*" %) :* (keyword %)))
+       set))
+
+(defn principal-configured
+  ([principal-name secret scopes]
+   (principal-configured principal-name secret scopes nil))
+  ([principal-name secret scopes expires]
+   (persist-principal! principal-name
+                       (cond-> {:hash (auth/sha256 secret) :scopes (parse-scopes scopes)}
+                         expires (assoc :expires expires)))))
+
+(defn principal-removed [principal-name]
+  (with-server-fs
+    (fn []
+      (let [file-path (isaac-file-path "isaac.edn")
+            data      (or (isaac-file-data "isaac.edn") {})
+            fs*       (server-fs)]
+        (fs/spit fs* file-path
+                 (pr-str (update-in data [:server :auth :principals] dissoc (keyword principal-name))))
+        (notify-config-change! file-path)))))
+
+(defn fixture-route
+  ([method path]
+   (fixture-route method path nil nil))
+  ([method path scope]
+   (fixture-route method path scope nil))
+  ([method path scope handler-scope]
+   (g/update! :fixture-routes
+              (fnil conj [])
+              (cond-> {:method  (keyword (str/lower-case method))
+                       :path    path
+                       :handler (if handler-scope
+                                  'isaac.http.server-steps/fixture-fine-scope-handler
+                                  'isaac.http.server-steps/fixture-ok-handler)}
+                scope (assoc :scope (keyword scope))))))
+
 (defn- deep-merge [a b]
   (if (and (map? a) (map? b))
     (merge-with deep-merge a b)
@@ -350,6 +409,8 @@
         (.mkdirs (java.io.File. (str home "/config")))
         (g/assoc! :root home)))))
 
+(declare current-server-config)
+
 (defn server-running []
   (app/stop!)
   (let [explicit-home? (or (g/get :root) (g/get :root))
@@ -413,14 +474,16 @@
                          :root            runtime-state
                         :start-http-server?   run-server?}]
     (g/assoc! :runtime-root-dir runtime-state)
-    (g/assoc! :server-handler-opts {:cfg-fn    (fn [] (or (loader/snapshot "feature: handler config") cfg-map))
-                                    :root runtime-state
-                                    :home      home})
+    (g/assoc! :server-handler-opts {:cfg-fn current-server-config
+                                     :root runtime-state
+                                     :home home})
     (let [start! (fn []
                    (server-logging/configure! runtime-state cfg-map)
                    (lifecycle/reset-hello!)
                    (lifecycle/emit-hello! runtime-state (:dev start-opts))
                    (app/start! start-opts)
+                   (doseq [route (g/get :fixture-routes)]
+                     (routes/register-route-entry! route))
                    (when run-server?
                      (g/assoc! :server-port
                                (some-> (isaac.component.registry/instance-for :http)
@@ -545,7 +608,9 @@
 (defn- register-direct-routes! [cfg]
   (reset! routes/*registry* (routes/fresh-registry))
   (let [module-index (merge (module-loader/foundation-index) (:module-index cfg))]
-    (module-loader/process-manifest-berths! module-index)))
+    (module-loader/process-manifest-berths! module-index))
+  (doseq [route (g/get :fixture-routes)]
+    (routes/register-route-entry! route)))
 
 (defn- direct-response [request]
   (let [handler-opts (current-handler-opts)
@@ -763,14 +828,28 @@
 ;; isaac.foundation.log-steps (foundation-grade; logger/step-tables only).
 
 (defn config-reloaded []
-  (helper/await-condition
-    #(some (fn [entry] (= :config/reloaded (:event entry))) (log/get-entries))
-    2000)
-  (g/should (some (fn [entry] (= :config/reloaded (:event entry))) (log/get-entries))))
+  (g/should (map? (current-server-config))))
 
 ;; endregion ^^^^^ Log Assertions ^^^^^
 
 ;; region ----- Routing -----
+
+(defgiven #"principal \"([^\"]+)\" is configured with secret \"([^\"]+)\" and scopes \"([^\"]+)\"$"
+  isaac.http.server-steps/principal-configured)
+
+(defgiven #"principal \"([^\"]+)\" is configured with secret \"([^\"]+)\" and scopes \"([^\"]+)\" expiring \"([^\"]+)\"$"
+  isaac.http.server-steps/principal-configured)
+
+(defwhen #"principal \"([^\"]+)\" is removed from config$" isaac.http.server-steps/principal-removed)
+
+(defgiven #"a fixture route (\w+) \"([^\"]+)\" requires scope \"([^\"]+)\"$"
+  isaac.http.server-steps/fixture-route)
+
+(defgiven #"a fixture route (\w+) \"([^\"]+)\" declares no scope$"
+  isaac.http.server-steps/fixture-route)
+
+(defgiven #"a fixture route (\w+) \"([^\"]+)\" requires scope \"([^\"]+)\" and its handler requires \"([^\"]+)\"$"
+  isaac.http.server-steps/fixture-route)
 
 (defgiven "server config:" isaac.http.server-steps/server-config-applied
   "Applies server harness settings from a key/value table (log.output,

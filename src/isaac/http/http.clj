@@ -1,6 +1,7 @@
 (ns isaac.http.http
   (:require
     [clojure.string :as str]
+    [isaac.http.auth :as auth]
     [isaac.logger :as log]
     [isaac.http.burst :as burst]
     [isaac.http.routes :as routes]))
@@ -35,27 +36,53 @@
                           not-empty)]
     (or forwarded (:remote-addr request))))
 
+(defn- refused-response [status]
+  {:status status
+   :headers (cond-> {"Content-Type" "text/plain"}
+              (= 401 status) (assoc "WWW-Authenticate" "Bearer"))
+   :body (if (= 401 status) "Unauthorized" "Forbidden")})
+
+(defn- verified-identity [request]
+  (some #(% request) (auth/identity-verifiers)))
+
+(defn- invoke-handler [handler request]
+  (try
+    (handler request)
+    (catch clojure.lang.ExceptionInfo e
+      (if (= 403 (:status (ex-data e)))
+        (refused-response 403)
+        (throw e)))))
+
 (defn wrap-auth [opts handler]
-  (fn [request]
-    (let [cfg   (request-cfg opts)
-          token (get-in cfg [:server :auth :token])]
-      ;; If a token is configured, enforce it on every request regardless
-      ;; of bind host. Forwarding layers (Tailscale, ngrok, ssh -L,
-      ;; reverse proxies) can map remote traffic onto loopback, so the
-      ;; old "loopback bind ignores token" rule was unsafe. The startup
-      ;; gate (in app.clj) still refuses to bind non-loopback without a
-      ;; token, so a token-less server is only reachable from real
-      ;; loopback peers.
-      (if (or (str/blank? token)
-              (= token (bearer-token request)))
-        (handler request)
-        (let [response {:status  401
-                        :headers {"Content-Type"        "text/plain"
-                                  "WWW-Authenticate"    "Bearer"}
-                        :body    "Unauthorized"}]
-          (when-let [burst-cfg (get-in cfg [:server :burst])]
-            (burst/record-unauthenticated! burst-cfg cfg (client-address request) (:uri request)))
-          response)))))
+  (let [warned-auth* (atom ::none)]
+    (fn [request]
+      (let [cfg        (request-cfg opts)
+            auth-cfg   (get-in cfg [:server :auth])
+            principals (auth/principals cfg)
+            bearer     (bearer-token request)
+            principal  (or (auth/authenticate cfg bearer) (verified-identity request))
+            scope      (routes/required-scope request)
+            auth-on?   (or (contains? auth-cfg :principals)
+                           (seq principals)
+                           (seq (auth/identity-verifiers)))
+            reason     (when auth-on?
+                         (cond
+                           (and principal (auth/expired? (:expires principal))) :expired
+                           (nil? principal) :unknown
+                           (not (auth/authorized? principal scope)) :scope))
+            status     (case reason :scope 403 (:unknown :expired) 401 nil)]
+        (when (and (some :legacy? (vals principals)) (not= auth-cfg @warned-auth*))
+          (reset! warned-auth* auth-cfg)
+          (log/warn :auth/legacy-token))
+        (if-not reason
+          (let [identity (some-> principal (select-keys [:name :scopes]))
+                response (invoke-handler handler (cond-> request identity (assoc :isaac/principal identity)))]
+            (cond-> response identity (assoc :isaac/principal identity)))
+          (do
+            (log/warn :auth/refused :principal (:name principal) :reason reason)
+            (when-let [burst-cfg (get-in cfg [:server :burst])]
+              (burst/record-unauthenticated! burst-cfg cfg (client-address request) (:uri request)))
+            (refused-response status)))))))
 
 (defn wrap-burst
   "Optional unauthenticated burst control. Absent :server :burst = off.
@@ -81,8 +108,12 @@
           start  (System/currentTimeMillis)]
       (log/debug :server/request-received :method method :uri uri :client client)
       (try
-        (let [response (handler request)
-              ms       (- (System/currentTimeMillis) start)]
+        (let [response  (handler request)
+              ms        (- (System/currentTimeMillis) start)
+              principal (or (get-in response [:isaac/principal :name])
+                            (get-in request [:isaac/principal :name]))]
+          (log/info :http/request :method method :uri uri :status (:status response) :ms ms :client client
+                    :principal principal)
           (log/debug :server/response-sent :method method :uri uri :status (:status response) :ms ms :client client)
           response)
         (catch Exception e
@@ -103,8 +134,8 @@
   ([opts-or-handler]
    (if (fn? opts-or-handler)
      (wrap-logging opts-or-handler)
-      (wrap-burst opts-or-handler
-        (wrap-logging
-          (wrap-auth opts-or-handler
-                     (fn [request]
-                       (routes/handler opts-or-handler request))))))))
+     (let [handler (or (:handler opts-or-handler)
+                       (fn [request] (routes/handler opts-or-handler request)))]
+       (wrap-burst opts-or-handler
+         (wrap-logging
+           (wrap-auth opts-or-handler handler)))))))

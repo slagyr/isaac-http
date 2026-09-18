@@ -50,7 +50,7 @@
 
   (it "the server manifest only declares server-owned berths and CLI commands"
     (let [manifest (read-manifest "resources/isaac-manifest.edn")]
-      (should= #{:isaac.http/route :isaac.http/comm}
+      (should= #{:isaac.http/comm :isaac.http/identity :isaac.http/route}
                 (set (keys (:berths manifest))))
       (should= #{:mcp-bridge} (set (keys (:isaac/cli manifest))))
       (should-not (contains? manifest :isaac.http/route))

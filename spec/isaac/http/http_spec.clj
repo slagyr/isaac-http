@@ -1,7 +1,8 @@
 (ns isaac.http.http-spec
   (:require
-    [isaac.logger :as log]
+    [isaac.http.auth]
     [isaac.http.http :as sut]
+    [isaac.logger :as log]
     [isaac.spec-helper :as helper]
     [speclj.core :refer :all]))
 
@@ -28,7 +29,42 @@
       (let [handler  (sut/create-handler {:cfg {:server {:host "127.0.0.1"
                                                          :auth {:token "s3cr3t"}}}})
             response (handler {:request-method :get :uri "/status" :headers {}})]
-        (should= 401 (:status response)))))
+        (should= 401 (:status response))))
+
+    (helper/with-captured-logs)
+
+    (it "warns once for a legacy token until auth config changes"
+      (let [config* (atom {:server {:auth {:token "marigold"}}})
+            handler (sut/create-handler {:cfg-fn #(identity @config*)})
+            request {:request-method :get :uri "/status"
+                     :headers {"authorization" "Bearer marigold"}}]
+        (handler request)
+        (handler request)
+        (should= 1 (count (filter #(= :auth/legacy-token (:event %)) @log/captured-logs)))
+        (reset! config* {:server {:auth {:token "skybeam"}}})
+        (handler (assoc-in request [:headers "authorization"] "Bearer skybeam"))
+        (should= 2 (count (filter #(= :auth/legacy-token (:event %)) @log/captured-logs)))))
+
+    (it "accepts a principal returned by a request identity verifier"
+      (with-redefs [isaac.http.auth/identity-verifiers
+                    (constantly [(fn [request]
+                                   (when (= "signed" (get-in request [:headers "x-identity"]))
+                                     {:name :google :scopes #{:*}}))])]
+        (let [handler  (sut/create-handler)
+              response (handler {:request-method :get :uri "/status"
+                                 :headers {"x-identity" "signed"}})]
+          (should= 200 (:status response)))))
+
+    (it "maps a handler scope refusal to 403"
+      (let [handler  (sut/create-handler
+                       {:cfg {:server {:auth {:principals
+                                             {:ci {:hash (isaac.http.auth/sha256 "marigold")
+                                                   :scopes #{:hail/send}}}}}}
+                        :handler (fn [request]
+                                   (isaac.http.auth/require-scope! request :hail/prompt-override))})
+            response (handler {:request-method :get :uri "/status"
+                               :headers {"authorization" "Bearer marigold"}})]
+        (should= 403 (:status response)))))
 
   (it "creates a handler function"
     (let [handler (sut/create-handler)]

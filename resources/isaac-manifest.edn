@@ -3,13 +3,18 @@
  :builtin?  true
  :factory   isaac.http.module/create-module
 
- :berths    {:isaac.http/route {:description "HTTP routes. :path is a clout pattern (literal segments, :name params, * wildcards). :method is :get/:post/... or :* for any-method. Prefix matching is just a trailing wildcard in the path."
+ :berths    {:isaac.http/identity {:description "Inbound request identity verifiers. Each contribution is a function symbol resolving (fn [request] -> {:name ... :scopes #{...}} | nil)."
+                                      :schema {:type :seq
+                                               :spec {:type :symbol
+                                                      :factory isaac.http.auth/register-identity-verifier!}}}
+              :isaac.http/route {:description "HTTP routes. :path is a clout pattern (literal segments, :name params, * wildcards). :method is :get/:post/... or :* for any-method. Prefix matching is just a trailing wildcard in the path."
                                   :schema      {:type :seq
                                                 :spec {:type    :map
                                                        :factory isaac.http.routes/register-route-entry!
                                                        :schema  {:method  {:type :keyword :validations [:present?]}
                                                                  :path    {:type :string :validations [:present?]}
-                                                                 :handler {:type :symbol :validations [:present?]}}}}}
+                                                                 :handler {:type :symbol :validations [:present?]}
+                                                                 :scope   {:type :keyword}}}}}
              :isaac.http/comm {:description "Communication channels (Discord, iMessage, ACP, …). Manifest contributions name available impls and carry the impl's :namespace (whose load implements isaac.comm.factory/create for that :type) plus its :extra-schema (extension fields composed into [:comms] slots of that :type). User-instantiated comm slots in the [:comms] config slot also count toward this berth, so `[:registered-in? :isaac.http/comm [:comms]]` accepts both manifest impl ids (the common :type values) and slot ids. :register-fn wires each live slot into comm-registry so the delivery worker can send outbound replies."
                                  :register-fn   isaac.comm.registry/register-instance!
                                  :deregister-fn isaac.comm.registry/deregister-instance!
@@ -28,6 +33,9 @@
                           :summary   "stdio MCP server that proxies a turn to POST /mcp/turns/{id}"
                           :namespace isaac.mcp-bridge.cli}}
 
+ :isaac.config/check
+ {:http-principals {:fn isaac.http.auth/validate-principals}}
+
  :isaac.config/schema
  {:server {:schema {:name        :server
                     :type        :map
@@ -35,7 +43,13 @@
                     :schema      {:auth       {:type        :map
                                                :description "Server-wide inbound auth configuration"
                                                :schema      {:token {:type        :string
-                                                                     :description "Bearer token for inbound HTTP requests"}}}
+                                                                     :description "Bearer token for inbound HTTP requests"}
+                                                             :principals {:type :map
+                                                                          :key-spec {:type :id}
+                                                                          :value-spec {:type :map
+                                                                                       :schema {:hash {:type :string :validations [:present?]}
+                                                                                                :scopes {:type :any :validations [:keyword-set?]}
+                                                                                                :expires {:type :string}}}}}}
                                   :burst      {:type        :map
                                                :description "Unauthenticated burst control. Absent group = off."
                                                :schema      {:threshold   {:type :int :description "Unauthenticated responses that trip a burst"}

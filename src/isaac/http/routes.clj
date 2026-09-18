@@ -23,26 +23,23 @@
    params and/or `*` wildcards (lands in the pattern list). `method`
    may be a keyword (`:get`, `:post`, …) or `:*` for any-method.
    Returns the registration key for chaining."
-  [method uri handler]
-  (if (pattern-string? uri)
-    (let [pattern (clout/route-compile uri)
-          entry   {:method  method
-                   :uri     uri
-                   :pattern pattern
-                   :handler handler}]
-      (swap! *registry*
-             (fn [reg]
-               (update reg :patterns
-                       (fn [patterns]
-                         (-> (remove #(and (= method (:method %))
-                                           (= uri (:uri %)))
-                                     patterns)
+  ([method uri handler]
+   (register-route! method uri handler nil))
+  ([method uri handler scope]
+   (if (pattern-string? uri)
+     (let [pattern (clout/route-compile uri)
+           entry   {:method method :uri uri :pattern pattern :handler handler :scope scope}]
+       (swap! *registry*
+              (fn [reg]
+                (update reg :patterns
+                        (fn [patterns]
+                          (-> (remove #(and (= method (:method %)) (= uri (:uri %))) patterns)
                               (concat [entry])
                               vec)))))
-      [method uri])
-    (do
-      (swap! *registry* assoc-in [:exact [method uri]] {:handler handler})
-      [method uri])))
+       [method uri])
+     (do
+       (swap! *registry* assoc-in [:exact [method uri]] {:handler handler :scope scope})
+       [method uri]))))
 
 (defn- maybe-resolve [sym]
   (when (symbol? sym) (util/resolve-var sym)))
@@ -52,8 +49,21 @@
    `{:method :get :path \"/x\" :handler isaac.foo/handler}`. Both
    literal paths and clout patterns (`/foo/:bar`, `/hooks/*`) flow
    through register-route!. `:method` may be `:*` for any-method."
-  [{:keys [method path handler]}]
-  (register-route! method path (maybe-resolve handler)))
+  [{:keys [method path handler scope]}]
+  (register-route! method path (maybe-resolve handler) scope))
+
+(declare built-in-routes method-matches?)
+
+(defn required-scope [request]
+  (let [{:keys [exact patterns]} @*registry*
+        exact-entry (or (get exact [(:request-method request) (:uri request)])
+                        (get built-in-routes [(:request-method request) (:uri request)]))
+        pattern-entry (some (fn [{:keys [pattern method] :as entry}]
+                              (when (and (method-matches? method (:request-method request))
+                                         (clout/route-matches pattern request))
+                                entry))
+                            patterns)]
+    (or (:scope exact-entry) (:scope pattern-entry) :*)))
 
 (defn route-registered? [method uri]
   (let [{:keys [exact patterns]} @*registry*]
