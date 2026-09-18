@@ -134,6 +134,17 @@
         (let [response (handler {:request-method :get :uri "/boom"})]
           (should= 500 (:status response)))))
 
+    (it "attributes an authenticated request to its principal"
+      (let [handler (sut/create-handler
+                      {:cfg {:http {:auth {:principals
+                                           {:ci {:hash (isaac.http.auth/sha256 "ci-secret")
+                                                 :scopes #{:*}}}}}}})
+            response (handler {:request-method :get :uri "/status"
+                               :headers {"authorization" "Bearer ci-secret"}})]
+        (should= 200 (:status response))
+        (let [entry (first (filter #(= :http/request (:event %)) @log/captured-logs))]
+          (should= :ci (:principal entry)))))
+
     )
 
   )

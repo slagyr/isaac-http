@@ -69,7 +69,7 @@
   (try (requiring-resolve 'isaac.comm.delivery.queue/enqueue!)
        (catch Throwable _ nil)))
 
-(defn- enqueue-attention! [cfg content]
+(defn enqueue-attention! [cfg content]
   (when-let [{:keys [comm target]} (get-in cfg [:attention :notify])]
     (when (and comm target)
       (if-let [enqueue! (delivery-enqueue-fn)]

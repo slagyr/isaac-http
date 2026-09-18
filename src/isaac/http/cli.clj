@@ -14,8 +14,11 @@
     [isaac.http.logging :as server-logging]
     [isaac.nexus :as nexus]
     [isaac.http.app :as app]
+    [isaac.http.audit :as audit]
+    [isaac.http.auth :as auth]
     [isaac.http.lifecycle :as lifecycle]
     [isaac.http.runtime :as runtime]
+    [isaac.runner.cli :as runner-cli]
     ))
 
 (defonce ^:private shutdown-hook-registered? (atom false))
@@ -107,10 +110,50 @@
     exit
     (run opts)))
 
+(defn- format-scopes [scopes]
+  (->> scopes
+       (map #(if (keyword? %) (subs (str %) 1) (str %)))
+       (str/join ",")))
+
+(defn- format-last-used [last-used name]
+  (or (get last-used name)
+      (get last-used (keyword name))
+      "-"))
+
+(defn auth-list!
+  "Print principals and last-used timestamps."
+  [root]
+  (let [root      (or root (nexus/get :root) (root/default-root {}))
+        fs*       (or (nexus/get :fs) (fs/instance) (fs/real-fs))
+        cfg       (or (:config (loader/load-config-result {:root root :fs fs*})) {})
+        last-used (audit/read-last-used root)]
+    (doseq [[name principal] (sort-by (comp str first) (auth/principals cfg))]
+      (let [n (if (keyword? name) (clojure.core/name name) (str name))]
+        (println (format "%s  %s  -  %s"
+                         n
+                         (format-scopes (:scopes principal))
+                         (format-last-used last-used n)))))))
+
 (defn run-fn [opts]
   (let [raw-args (or (:_raw-args opts) [])]
-    (cli-common/standard-run-fn "server" parse-option-map
-      (fn [merged] (dispatch-run merged raw-args))
-      opts)))
+    (if (= "auth" (first raw-args))
+      (let [sub (second raw-args)]
+        (if (= "list" sub)
+          (do (auth-list! (:root opts)) 0)
+          (do (binding [*out* *err*] (println "Usage: isaac server auth list")) 1)))
+      (cli-common/standard-run-fn "server" parse-option-map
+        (fn [merged] (dispatch-run merged raw-args))
+        opts))))
+
+(defonce ^:private wrap-runner-auth-list!
+  (do
+    (alter-var-root #'runner-cli/run-fn
+                    (fn [original]
+                      (fn [opts]
+                        (let [raw-args (or (:_raw-args opts) [])]
+                          (if (= "auth" (first raw-args))
+                            (run-fn opts)
+                            (original opts))))))
+    true))
 
 ;; ----- :isaac/cli berth implementation -----

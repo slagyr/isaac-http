@@ -1,10 +1,12 @@
 (ns isaac.http.http
   (:require
     [clojure.string :as str]
+    [isaac.http.audit :as audit]
     [isaac.http.auth :as auth]
     [isaac.logger :as log]
     [isaac.http.burst :as burst]
-    [isaac.http.routes :as routes]))
+    [isaac.http.routes :as routes]
+    [isaac.nexus :as nexus]))
 
 (defn loopback-host? [host]
   (boolean
@@ -65,21 +67,28 @@
             auth-on?   (or (contains? auth-cfg :principals)
                            (seq principals)
                            (seq (auth/identity-verifiers)))
+            remembered (when (and (nil? principal) (seq bearer))
+                        (audit/remembered-name (auth/sha256 bearer)))
             reason     (when auth-on?
                          (cond
                            (and principal (auth/expired? (:expires principal))) :expired
+                           (and (nil? principal) remembered) :revoked
                            (nil? principal) :unknown
                            (not (auth/authorized? principal scope)) :scope))
-            status     (case reason :scope 403 (:unknown :expired) 401 nil)]
+            status     (case reason :scope 403 (:unknown :expired :revoked) 401 nil)]
         (when (and (some :legacy? (vals principals)) (not= auth-cfg @warned-auth*))
           (reset! warned-auth* auth-cfg)
           (log/warn :auth/legacy-token))
         (if-not reason
-          (let [identity (some-> principal (select-keys [:name :scopes]))
-                response (invoke-handler handler (cond-> request identity (assoc :isaac/principal identity)))]
-            (cond-> response identity (assoc :isaac/principal identity)))
           (do
-            (log/warn :auth/refused :principal (:name principal) :reason reason)
+            (audit/remember-principal! principal)
+            (audit/record-use! cfg (or (nexus/get :root) (:root cfg) (:root opts)) principal)
+            (let [identity (some-> principal (select-keys [:name :scopes]))
+                  response (invoke-handler handler (cond-> request identity (assoc :isaac/principal identity)))]
+              (cond-> response identity (assoc :isaac/principal identity))))
+          (do
+            (log/warn :auth/refused :principal (or (:name principal) remembered) :reason reason :uri (:uri request))
+            (audit/note-refusal! cfg principal reason remembered)
             (when-let [burst-cfg (get-in cfg [:http :burst])]
               (burst/record-unauthenticated! burst-cfg cfg (client-address request) (:uri request)))
             (refused-response status)))))))

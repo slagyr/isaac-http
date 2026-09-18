@@ -19,7 +19,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     And principal "ci" is configured with secret "ci-secret" and scopes "hail/send"
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
 
-  @wip
   Scenario: an authenticated request is attributed to its principal in the log
     Given the Isaac server is started
     When the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret"
@@ -28,7 +27,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
       | level | event         | principal | method | uri             | status |
       | :info | :http/request | ci        | :get   | /fixture/scoped | 200    |
 
-  @wip
   Scenario: a refused request logs the reason and the principal when known
     Given the Isaac server is started
     And a fixture route GET "/fixture/admin" declares no scope
@@ -42,7 +40,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
       | level | event         | principal | reason   |
       | :warn | :auth/refused |           | :unknown |
 
-  @wip
   Scenario: the first ever use of a principal raises one attention post, later uses none
     Given the Isaac server is started
     When the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret"
@@ -55,7 +52,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     When the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret" 3 times
     Then the directory "comm/delivery/pending" has exactly 1 file
 
-  @wip
   Scenario: last-used is recorded for the principal and shown by auth list
     Given the clock is fixed at "2026-09-18T10:00:00Z"
     And the Isaac server is started
@@ -67,7 +63,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     Then the stdout lines match:
       | #"ci\s+hail/send\s+-\s+2026-09-18T10:00:00Z" |
 
-  @wip
   Scenario: last-used is written at most once a minute per principal
     Given the clock is fixed at "2026-09-18T10:00:00Z"
     And the Isaac server is started
@@ -77,7 +72,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     And the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret"
     Then the file "state/auth/last-used.edn" was written exactly 2 times
 
-  @wip
   Scenario: use of an expired secret raises an attention post naming the principal
     Given principal "stale" is configured with secret "stale-secret" and scopes "hail/send" expiring "2020-01-01"
     And the Isaac server is started
@@ -87,7 +81,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
       | path    | value                              |
       | content | contains "stale" and "expired"     |
 
-  @wip
   Scenario: use of a revoked secret raises an attention post naming the principal
     Given the Isaac server is started
     When the client sends GET "/fixture/scoped" with header "Authorization: Bearer ci-secret"
@@ -103,7 +96,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
       | path    | value                          |
       | content | contains "ci" and "revoked"    |
 
-  @wip
   Scenario: a principal expiring within seven days is flagged once a day
     Given the clock is fixed at "2026-09-18T10:00:00Z"
     And principal "soon" is configured with secret "soon-secret" and scopes "hail/send" expiring "2026-09-22"
@@ -118,7 +110,6 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     And the auth expiry sweep runs
     Then the directory "comm/delivery/pending" has exactly 2 file
 
-  @wip
   Scenario: alerts can be turned off per kind without a restart
     Given config:
       | http.auth.alerts.first-use | false |

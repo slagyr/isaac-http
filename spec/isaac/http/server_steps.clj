@@ -30,6 +30,7 @@
     [isaac.spec-helper :as helper]
     [isaac.http.app :as app]
     [isaac.http.lifecycle :as lifecycle]
+    [isaac.http.audit :as audit]
     [isaac.http.burst :as burst]
     [isaac.http.auth :as auth]
     [isaac.http.http :as server-http]
@@ -61,10 +62,14 @@
 ;; so hot-reload scenarios still get notified when a config file is written.
 (fcli/register-isaac-run-wrapper!
   (fn [thunk]
-    (if-let [ct (g/get :current-time)]
-      (binding [log-file/*now* ct]
-        (thunk))
-      (thunk))))
+    (let [run (fn []
+                (if-let [ct (g/get :current-time)]
+                  (binding [log-file/*now* ct]
+                    (thunk))
+                  (thunk)))]
+      (with-redefs [runner-cli/block! (fn [] nil)
+                    server/block!     (fn [] nil)]
+        (run)))))
 
 (froot/register-root-setup-hook!
   (fn [abs-dir]
@@ -320,7 +325,10 @@
   (app/stop!)
   (lifecycle/reset-hello!))
 
-(g/after-scenario stop-server!)
+(g/after-scenario
+  (fn []
+    (stop-server!)
+    (audit/reset-state!)))
 
 (defn server-config-applied
   "Server harness overlay: bind-server-port, in-memory :server-config, and
@@ -904,6 +912,97 @@
 (defwhen "the server command is run with args {args:string}" isaac.http.server-steps/server-command-run-with-args)
 
 (defwhen "the isaac config is reloaded" isaac.http.server-steps/config-reloaded)
+
+(defn clock-advances-seconds [n]
+  (let [base (or (g/get :current-time) (java.time.Instant/now))
+        next (.plusSeconds base (long (if (string? n) (parse-long n) n)))]
+    (g/assoc! :current-time next)))
+
+(defn clock-advances-days [n]
+  (let [base (or (g/get :current-time) (java.time.Instant/now))
+        next (.plusSeconds base (* 86400 (long (if (string? n) (parse-long n) n))))]
+    (g/assoc! :current-time next)))
+
+(defn file-written-exactly [_path n]
+  (g/should= (long (if (string? n) (parse-long n) n))
+             (audit/last-used-write-count)))
+
+(defn- parse-contains-parts [value]
+  (when (str/starts-with? (str/trim (str value)) "contains ")
+    (->> (re-seq #"\"([^\"]+)\"" (subs (str/trim value) 9))
+         (map second)
+         vec)))
+
+(defn newest-file-in-edn-contains [dir-path table]
+  (let [expanded (str (or (g/get :runtime-root-dir) (g/get :root)) "/" dir-path)
+        fs*      (or (g/get :mem-fs) (fs/real-fs))]
+    (nexus/-with-nested-nexus {:fs fs*}
+      (let [children (or (fs/children fs* expanded) [])
+            newest   (->> children
+                          (map (fn [child]
+                                 (edn/read-string (fs/slurp fs* (str expanded "/" child)))))
+                          (sort-by :created-at)
+                          last)]
+        (g/should-not-be-nil newest)
+        (doseq [row (:rows table)]
+          (let [row-map (zipmap (:headers table) row)
+                path    (get row-map "path")
+                value   (get row-map "value")
+                actual  (get newest (keyword path))]
+            (if-let [parts (parse-contains-parts value)]
+              (doseq [part parts]
+                (g/should (str/includes? (str actual) part)))
+              (g/should= value actual))))))))
+
+(defn auth-expiry-sweep-runs []
+  (let [run! #(audit/sweep-expiring! (current-server-config))]
+    (if-let [ct (g/get :current-time)]
+      (binding [log-file/*now* ct] (run!))
+      (run!))))
+
+(defonce ^:private patched-isaac-file-exists-with?*
+  (do
+    (alter-var-root #'ffs/isaac-file-exists-with-content
+      (fn [orig]
+        (fn [path content]
+          (if (map? content)
+            (do (ffs/isaac-file-exists path)
+                (ffs/isaac-file-edn-contains path content))
+            (orig path content)))))
+    true))
+
+(defn- regex-cell? [s]
+  (and (string? s)
+       (str/starts-with? s "#\"")
+       (str/ends-with? s "\"")))
+
+(defn- regex-cell-pattern [s]
+  (re-pattern (subs s 2 (dec (count s)))))
+
+(defonce ^:private patched-stdout-lines-match?*
+  (do
+    (alter-var-root #'fcli/stdout-lines-match
+      (fn [orig]
+        (fn [table]
+          (let [cells (if (seq (:rows table))
+                        (mapv first (:rows table))
+                        (vec (:headers table)))]
+            (if (some regex-cell? cells)
+              (let [output (or (fcli/current-output) "")
+                    lines  (mapv str/trim (str/split-lines output))]
+                (g/should= (count cells) (count lines))
+                (doseq [[cell line] (map vector cells lines)]
+                  (if (regex-cell? cell)
+                    (g/should (re-find (regex-cell-pattern cell) line))
+                    (g/should= (str/trim (fcli/unescape-expected (or cell ""))) line))))
+              (orig table))))))
+    true))
+
+(defwhen "the clock advances {n:int} seconds" isaac.http.server-steps/clock-advances-seconds)
+(defwhen "the clock advances {n:int} days" isaac.http.server-steps/clock-advances-days)
+(defthen "the file {path:string} was written exactly {n:int} times" isaac.http.server-steps/file-written-exactly)
+(defthen "the newest file in {dir:string} EDN contains:" isaac.http.server-steps/newest-file-in-edn-contains)
+(defwhen "the auth expiry sweep runs" isaac.http.server-steps/auth-expiry-sweep-runs)
 
 
 

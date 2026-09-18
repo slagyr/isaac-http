@@ -1,5 +1,6 @@
 (ns isaac.http.module
   (:require
+    [isaac.http.cli]
     [isaac.module.protocol :as module]
     [isaac.module.loader :as module-loader]))
 

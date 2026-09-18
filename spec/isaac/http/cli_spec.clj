@@ -11,6 +11,7 @@
     [isaac.module.loader :as module-loader]
     [isaac.nexus :as nexus]
     [isaac.http.app :as app]
+    [isaac.http.audit :as audit]
     [isaac.http.cli :as sut]
     [isaac.http.runtime :as runtime]
     [isaac.spec-helper :as helper]
@@ -170,6 +171,27 @@
                                              (reset! captured opts)
                                              0)]
           (should= 0 (sut/run-fn {:_raw-args ["--port" "4000"] :home "/tmp/server-home"}))
-          (should= {:home "/tmp/server-home" :port "4000" :host "127.0.0.1"} @captured)))))
+          (should= {:home "/tmp/server-home" :port "4000" :host "127.0.0.1"} @captured))))
+
+    (it "lists principals without starting the HTTP server"
+      (let [started? (atom false)]
+        (with-redefs [sut/auth-list! (fn [root]
+                                       (println "ci  hail/send  -  2026-09-18T10:00:00Z")
+                                       (should= "/tmp/root" root))
+                      sut/run        (fn [_] (reset! started? true) 0)]
+          (let [output (with-out-str
+                         (should= 0 (sut/run-fn {:_raw-args ["auth" "list"] :root "/tmp/root"})))]
+            (should-not @started?)
+            (should (re-find #"ci" output))))))
+
+    (it "prints namespaced scopes on auth list"
+      (with-redefs [loader/load-config-result
+                    (fn [& _] {:config {:http {:auth {:principals {:ci {:scopes #{:hail/send}}}}}}})
+                    audit/read-last-used
+                    (fn [_] {"ci" "2026-09-18T10:00:00Z"})]
+        (let [output (with-out-str (sut/auth-list! "/tmp/root"))]
+          (should (re-find #"ci\s+hail/send\s+-\s+2026-09-18T10:00:00Z" output)))))
+
+    )
 
   )
