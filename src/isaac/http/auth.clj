@@ -5,7 +5,7 @@
   (:import
     (java.nio.charset StandardCharsets)
     (java.security MessageDigest)
-    (java.time LocalDate)
+    (java.time Instant LocalDate)
     (java.time.format DateTimeParseException)))
 
 (defn sha256 [secret]
@@ -22,7 +22,10 @@
     (try
       (.isBefore (LocalDate/parse expires) (LocalDate/now))
       (catch DateTimeParseException _
-        true))))
+        (try
+          (.isBefore (Instant/parse expires) (Instant/now))
+          (catch DateTimeParseException _
+            true))))))
 
 (def ^:dynamic *identity-verifiers* (atom {}))
 
@@ -37,8 +40,20 @@
 (defn identity-verifiers []
   (vals @*identity-verifiers*))
 
+(defn- overlap-name [name]
+  (keyword (str (clojure.core/name name) "@prev")))
+
+(defn- with-overlap-twins [configured]
+  (reduce-kv
+    (fn [acc name principal]
+      (if-let [twin (get principal :previous)]
+        (assoc acc (overlap-name name) twin)
+        acc))
+    configured
+    configured))
+
 (defn principals [cfg]
-  (let [configured (get-in cfg [:http :auth :principals] {})
+  (let [configured (with-overlap-twins (get-in cfg [:http :auth :principals] {}))
         legacy     (get-in cfg [:http :auth :token])]
     (cond-> configured
       (and (seq legacy) (not (contains? configured :admin)))
@@ -65,7 +80,11 @@
         (LocalDate/parse expires)
         true
         (catch DateTimeParseException _
-          false))))
+          (try
+            (Instant/parse expires)
+            true
+            (catch DateTimeParseException _
+              false))))))
 
 (defn validate-principals [{:keys [config]}]
   (let [principals (get-in config [:http :auth :principals])]
@@ -79,7 +98,11 @@
                (conj {:key (str prefix ".scopes") :value "must not be empty"})
 
                (not (valid-expiration? (:expires principal)))
-               (conj {:key (str prefix ".expires") :value "must be an ISO date (YYYY-MM-DD)"}))))
+               (conj {:key (str prefix ".expires") :value "must be an ISO date (YYYY-MM-DD)"})
+
+               (and (:previous principal)
+                    (not (valid-expiration? (get-in principal [:previous :expires]))))
+               (conj {:key (str prefix ".previous.expires") :value "must be an ISO date (YYYY-MM-DD)"}))))
          principals))}))
 
 (defn require-scope! [request scope]

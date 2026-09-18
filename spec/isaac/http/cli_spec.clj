@@ -1,5 +1,6 @@
 (ns isaac.http.cli-spec
   (:require
+    [isaac.cli.api :as cli-api]
     [isaac.cli.registry :as registry]
     [isaac.config.api :as config]
     [isaac.config.loader :as loader]
@@ -15,7 +16,9 @@
     [isaac.http.cli :as sut]
     [isaac.http.runtime :as runtime]
     [isaac.spec-helper :as helper]
-    [speclj.core :refer :all]))
+    [speclj.core :refer :all])
+  (:import
+    (java.io StringWriter)))
 
 (defn- temp-dir []
   (.toFile (java.nio.file.Files/createTempDirectory "isaac-http-cli-spec" (make-array java.nio.file.attribute.FileAttribute 0))))
@@ -35,7 +38,14 @@
 
     (it "registers the server command"
       (module-loader/process-manifest-berths! (module-loader/builtin-index))
-      (should-not-be-nil (registry/get-command "server"))))
+      (should-not-be-nil (registry/get-command "server")))
+
+    (it "lists auth mint rotate revoke list as server subcommands"
+      (let [names (set (map :name (cli-api/subcommands :server)))]
+        (should (contains? names "auth mint"))
+        (should (contains? names "auth rotate"))
+        (should (contains? names "auth revoke"))
+        (should (contains? names "auth list")))))
 
   (describe "run"
 
@@ -176,9 +186,9 @@
     (it "lists principals without starting the HTTP server"
       (let [started? (atom false)]
         (with-redefs [sut/auth-list! (fn [root]
-                                       (println "ci  hail/send  -  2026-09-18T10:00:00Z")
+                                       (println "ci  hail/send  -  never")
                                        (should= "/tmp/root" root))
-                      sut/run        (fn [_] (reset! started? true) 0)]
+                      sut/run (fn [_] (reset! started? true) 0)]
           (let [output (with-out-str
                          (should= 0 (sut/run-fn {:_raw-args ["auth" "list"] :root "/tmp/root"})))]
             (should-not @started?)
@@ -192,6 +202,41 @@
         (let [output (with-out-str (sut/auth-list! "/tmp/root"))]
           (should (re-find #"ci\s+hail/send\s+-\s+2026-09-18T10:00:00Z" output)))))
 
+    (it "runs isaac server auth mint through main without starting HTTP"
+      (let [called (atom nil)]
+        (with-redefs [isaac.http.auth-cli/mint! (fn [root name opts]
+                                                  (reset! called {:root root :name name :opts opts})
+                                                  {:exit 0 :secret "sekrit-token-value-0123456789ab"})
+                      sut/run (fn [_] (throw (ex-info "should not start server" {})))]
+          (module-loader/process-manifest-berths! (module-loader/builtin-index))
+          (let [err (StringWriter.)
+                out (StringWriter.)]
+            (binding [*out* out *err* err]
+              (should= 0 (main/run ["--root" "/tmp/auth-home" "server" "auth" "mint" "ci" "--scopes" "hail/send"])))
+            (should= "sekrit-token-value-0123456789ab\n" (str out))
+            (should= "" (str err))
+            (should= "ci" (:name @called))))))
+
+    (it "dispatches server auth mint without starting the HTTP server"
+      (let [called (atom nil)]
+        (with-redefs [isaac.http.auth-cli/mint! (fn [root name opts]
+                                                  (reset! called {:root root :name name :opts opts})
+                                                  {:exit 0 :secret "sekrit-token-value-0123456789ab"})
+                      sut/run (fn [_] (throw (ex-info "should not start server" {})))]
+          (let [out (with-out-str
+                      (should= 0 (sut/run-fn {:_raw-args ["auth" "mint" "ci" "--scopes" "hail/send"]
+                                              :root "/tmp/auth-home"})))]
+            (should= "sekrit-token-value-0123456789ab\n" out)
+            (should= "ci" (:name @called))
+            (should= "hail/send" (get-in @called [:opts :scopes]))))))
+
+    (it "auth --help documents mint rotate revoke list and the one-time secret rule"
+      (let [output (with-out-str (should= 0 (sut/run-fn {:_raw-args ["auth" "--help"]})))]
+        (should (re-find #"mint" output))
+        (should (re-find #"rotate" output))
+        (should (re-find #"revoke" output))
+        (should (re-find #"list" output))
+        (should (re-find #"(?i)printed once" output))))
     )
 
   )

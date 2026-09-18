@@ -120,4 +120,22 @@
     (should= {:comms {(keyword marigold/longwave) {:name marigold/captain}}}
              (read-string (fs/slurp (nexus/get :fs) (str test-root "/config/isaac.edn")))))
 
+  (it "captures a printed bearer secret from stdout"
+    (g/assoc! :output "abcDEF0123456789_-xyz\n")
+    (sut/stdout-line-is-bearer-secret 16)
+    (should= "abcDEF0123456789_-xyz" (g/get :printed-secret)))
+
+  (it "rewrites @prev config paths onto the nested previous twin"
+    (g/assoc! :mem-fs (nexus/get :fs))
+    (g/assoc! :root test-root)
+    (fs/mkdirs (nexus/get :fs) (str test-root "/config"))
+    (fs/spit (nexus/get :fs) (str test-root "/config/isaac.edn")
+             (pr-str {:http {:auth {:principals {:ci {:hash "sha256:new"
+                                                      :scopes #{:hail/send}
+                                                      :previous {:hash "sha256:old"
+                                                                 :scopes #{:hail/send}
+                                                                 :expires "2099-01-01T00:00:00Z"}}}}}}))
+    (should= "sha256:old" (#'sut/config-value-at "http.auth.principals.ci@prev.hash"))
+    (should-be-nil (#'sut/config-value-at "http.auth.principals.missing")))
+
   )

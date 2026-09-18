@@ -226,15 +226,23 @@
 
 
 
+(defn- config-path-segments [path]
+  (mapv (fn [segment]
+          (if (str/includes? segment "@")
+            (let [[base _] (str/split segment #"@" 2)]
+              [(keyword base) :previous])
+            [(keyword segment)]))
+        (str/split path #"\.")))
+
 (defn- get-path [data path]
   (reduce (fn [current segment]
             (cond
               (nil? current) nil
-              (map? current) (or (get current (keyword segment))
-                                 (get current segment))
+              (map? current) (or (get current segment)
+                                 (get current (name segment)))
               :else nil))
           data
-          (str/split path #"\.")))
+          (mapcat identity (config-path-segments path))))
 
 (defn- config-file-path []
   (str (g/get :root) "/config/isaac.edn"))
@@ -265,15 +273,22 @@
   (auth/require-scope! request :hail/prompt-override)
   (fixture-ok-handler request))
 
+(defn- overlap-twin-name? [principal-name]
+  (str/includes? (str principal-name) "@"))
+
 (defn- persist-principal! [principal-name principal]
   (with-server-fs
     (fn []
       (let [file-path (isaac-file-path "isaac.edn")
             data      (or (isaac-file-data "isaac.edn") {})
-            fs*       (server-fs)]
+            fs*       (server-fs)
+            path      (if (overlap-twin-name? principal-name)
+                        (let [[base _] (str/split principal-name #"@" 2)]
+                          [:http :auth :principals (keyword base) :previous])
+                        [:http :auth :principals (keyword principal-name)])]
         (fs/mkdirs fs* (fs/parent file-path))
         (fs/spit fs* file-path
-                 (pr-str (assoc-in data [:http :auth :principals (keyword principal-name)] principal)))
+                 (pr-str (assoc-in data path principal)))
         (notify-config-change! file-path)))))
 
 (defn- parse-scopes [scopes]
@@ -369,19 +384,23 @@
         (fs/spit   fs* file-path (str/trim content))
         (notify-config-change! file-path)))))
 
+(declare isaac-config-path-equals)
+
 (defn isaac-config-path-is [path value]
-  (with-server-fs
-    (fn []
-      (when-not (skip-row? value)
-        (let [file-path (isaac-file-path "isaac.edn")
-              data      (or (isaac-file-data "isaac.edn") {})
-              fs*       (server-fs)]
-          (fs/mkdirs fs* (fs/parent file-path))
-          (fs/spit   fs* file-path
-                          (pr-str (assoc-in data
-                                            (mapv keyword (str/split path #"\."))
-                                            (parse-isaac-value file-path path value))))
-          (notify-config-change! file-path))))))
+  (if (some? (g/get :exit-code))
+    (isaac-config-path-equals path value)
+    (with-server-fs
+      (fn []
+        (when-not (skip-row? value)
+          (let [file-path (isaac-file-path "isaac.edn")
+                data      (or (isaac-file-data "isaac.edn") {})
+                fs*       (server-fs)]
+            (fs/mkdirs fs* (fs/parent file-path))
+            (fs/spit   fs* file-path
+                            (pr-str (assoc-in data
+                                              (mapv keyword (str/split path #"\."))
+                                              (parse-isaac-value file-path path value))))
+            (notify-config-change! file-path)))))))
 
 (defn- seeded-log-ts [n]
   (let [base (or (g/get :current-time) (java.time.Instant/parse "2026-05-12T00:00:00Z"))]
@@ -665,8 +684,23 @@
         headers (extract-headers rows)]
     (send-http :get path headers)))
 
+(defn- capture-printed-secret-from-stdout! []
+  (when-not (g/get :printed-secret)
+    (let [line (first (str/split-lines (str/trim (or (fcli/current-output) ""))))]
+      (when (and (seq line)
+                 (<= 32 (count line))
+                 (re-matches #"[A-Za-z0-9_-]+" line))
+        (g/assoc! :printed-secret line)))))
+
+(defn interpolate-printed-secret [text]
+  (capture-printed-secret-from-stdout!)
+  (let [secret (g/get :printed-secret)]
+    (cond-> (str text)
+      secret (str/replace "<the printed secret>" secret))))
+
 (defn get-request-with-header [path header]
-  (let [[name value] (str/split header #":\s*" 2)]
+  (let [header (interpolate-printed-secret header)
+        [name value] (str/split header #":\s*" 2)]
     (send-http :get path {name value})))
 
 (defn- as-count [n]
@@ -677,7 +711,8 @@
     (send-http method path {})))
 
 (defn client-sends-with-header-n-times [method path header n]
-  (let [[name value] (str/split header #":\s*" 2)]
+  (let [header (interpolate-printed-secret header)
+        [name value] (str/split header #":\s*" 2)]
     (dotimes [_ (as-count n)]
       (send-http method path {name value}))))
 
@@ -718,7 +753,7 @@
 
 (defn post-request-with-header-and-body [path header body]
   (let [port    (g/get :server-port)
-        headers (parse-header-line header)
+        headers (parse-header-line (interpolate-printed-secret header))
         resp    (if (pos? (long (or port 0)))
                   @(http/post (str (request-base-url) path)
                               {:headers (assoc headers "Content-Type" "application/json")
@@ -834,6 +869,71 @@
 ;; region ----- Log Assertions -----
 ;; "the log has entries matching:" / "no entries matching:" moved to
 ;; isaac.foundation.log-steps (foundation-grade; logger/step-tables only).
+
+(defn stdout-has-exactly-n-lines [n]
+  (let [output (or (fcli/current-output) "")
+        n      (if (string? n) (parse-long n) n)
+        lines  (if (str/blank? output) [] (str/split-lines output))]
+    (g/should= n (count lines))))
+
+(defn stdout-line-is-bearer-secret [n]
+  (let [n      (if (string? n) (parse-long n) n)
+        output (str/trim (or (fcli/current-output) ""))
+        line   (first (str/split-lines output))]
+    (g/should-not-be-nil line)
+    (g/should (<= n (count line)))
+    (g/should (re-matches #"[A-Za-z0-9_-]+" line))
+    (g/assoc! :printed-secret line)))
+
+(defn- loaded-config []
+  (with-server-fs
+    (fn []
+      (:config (loader/load-config-result {:root (or (g/get :root) (g/get :runtime-root-dir))
+                                           :fs   (server-fs)})))))
+
+(defn- config-value-at [path]
+  (get-path (loaded-config) path))
+
+(defn- present-config-value [value]
+  (cond
+    (set? value) (str "#{" (->> value (map pr-str) (str/join " ")) "}")
+    :else        (str value)))
+
+(defn isaac-config-path-equals [path expected]
+  (let [actual (config-value-at path)]
+    (g/should-not-be-nil actual)
+    (let [presented (present-config-value actual)]
+      (if (and (str/starts-with? expected "#{") (str/starts-with? presented "#{"))
+        (g/should= (edn/read-string expected) actual)
+        (g/should= expected presented)))))
+
+(defn isaac-config-path-matches [path pattern]
+  (let [actual (config-value-at path)]
+    (g/should-not-be-nil actual)
+    (g/should (re-find (re-pattern pattern) (str actual)))))
+
+(defn isaac-config-path-absent [path]
+  (g/should-be-nil (config-value-at path)))
+
+(defn config-file-does-not-contain-printed-secret [path]
+  (let [secret (or (g/get :printed-secret) "")]
+    (g/should (seq secret))
+    (let [full-path (if (str/starts-with? path "/")
+                      path
+                      (str (g/get :root) "/" path))
+          fs*       (server-fs)
+          content   (with-server-fs
+                      (fn []
+                        (or (when (fs/exists? fs* full-path)
+                              (fs/slurp fs* full-path))
+                            "")))]
+      (g/should-not (str/includes? content secret)))))
+
+(defn log-has-no-printed-secret []
+  (let [secret (or (g/get :printed-secret) "")]
+    (g/should (seq secret))
+    (doseq [entry (log/get-entries)]
+      (g/should-not (str/includes? (pr-str entry) secret)))))
 
 (defn config-reloaded []
   (g/should (map? (current-server-config))))
@@ -972,29 +1072,95 @@
     true))
 
 (defn- regex-cell? [s]
-  (and (string? s)
-       (str/starts-with? s "#\"")
-       (str/ends-with? s "\"")))
+  (boolean
+    (when (string? s)
+      (re-find #"^#\"" (str/trim s)))))
 
 (defn- regex-cell-pattern [s]
-  (re-pattern (subs s 2 (dec (count s)))))
+  (let [s (str/trim s)
+        inner (if (str/ends-with? s "\"")
+                (subs s 2 (dec (count s)))
+                (subs s 2))]
+    (re-pattern inner)))
+
+(defn- rewrite-at-prev-path [path]
+  (str/replace (str path) #"\.([^.]+)@prev" ".$1.previous"))
+
+(defonce ^:private patched-config-path-matches?*
+  (do
+    (when-let [v (try (requiring-resolve 'isaac.config.config-steps/config-path-matches)
+                      (catch Exception _ nil))]
+      (alter-var-root v
+        (fn [orig]
+          (fn [path pattern]
+            (orig (rewrite-at-prev-path path) pattern)))))
+    true))
+
+(defonce ^:private patched-config-file-does-not-contain?*
+  (do
+    (when-let [v (try (requiring-resolve 'isaac.config.config-steps/config-file-does-not-contain)
+                      (catch Exception _ nil))]
+      (alter-var-root v
+        (fn [orig]
+          (fn [path expected]
+            (if (= "the printed secret" expected)
+              (config-file-does-not-contain-printed-secret path)
+              (orig path expected))))))
+    true))
+
+(defonce ^:private patched-log-has-no-entries-matching?*
+  (do
+    (when-let [v (try (requiring-resolve 'isaac.foundation.log-steps/log-entries-dont-match)
+                      (catch Exception _ nil))]
+      (alter-var-root v
+        (fn [orig]
+          (fn [table]
+            (let [secret (g/get :printed-secret)
+                  rows   (mapv (fn [row]
+                                 (mapv #(if (and secret (string? %))
+                                          (str/replace % "<the printed secret>" secret)
+                                          %)
+                                       row))
+                               (:rows table))]
+              (orig (assoc table :rows rows)))))))
+    true))
+
+(defonce ^:private patched-stdout-matches?*
+  (do
+    (alter-var-root #'fcli/stdout-matches
+      (fn [orig]
+        (fn [table]
+          (let [output   (or (fcli/current-output) "")
+                patterns (fcli/extract-patterns table)]
+            (if (some #(str/starts-with? % "#\"") patterns)
+              (doseq [pattern patterns]
+                (let [re (if (str/starts-with? pattern "#\"")
+                           (regex-cell-pattern pattern)
+                           (re-pattern pattern))]
+                  (g/should (re-find re output))))
+              (orig table))))))
+    true))
 
 (defonce ^:private patched-stdout-lines-match?*
   (do
     (alter-var-root #'fcli/stdout-lines-match
       (fn [orig]
         (fn [table]
-          (let [cells (if (seq (:rows table))
-                        (mapv first (:rows table))
-                        (vec (:headers table)))]
+          (let [header-cells (vec (:headers table))
+                row-cells    (mapv first (:rows table))
+                cells        (cond
+                               (some regex-cell? header-cells) header-cells
+                               (seq row-cells)                 row-cells
+                               :else                           header-cells)]
             (if (some regex-cell? cells)
               (let [output (or (fcli/current-output) "")
                     lines  (mapv str/trim (str/split-lines output))]
-                (g/should= (count cells) (count lines))
-                (doseq [[cell line] (map vector cells lines)]
-                  (if (regex-cell? cell)
-                    (g/should (re-find (regex-cell-pattern cell) line))
-                    (g/should= (str/trim (fcli/unescape-expected (or cell ""))) line))))
+                (doseq [cell cells]
+                  (g/should (some (fn [line]
+                                    (if (regex-cell? cell)
+                                      (re-find (regex-cell-pattern cell) line)
+                                      (= (str/trim (fcli/unescape-expected (or cell ""))) line)))
+                                  lines))))
               (orig table))))))
     true))
 
@@ -1054,5 +1220,24 @@
 (defthen "the response body has {key:string} equal to {value:string}" isaac.http.server-steps/response-body-key-equals)
 
 (defthen "the response body has a {key:string} key" isaac.http.server-steps/response-body-has-key)
+
+(defthen "the stdout has exactly {n:int} line(s)" isaac.http.server-steps/stdout-has-exactly-n-lines
+  "Counts captured stdout lines after an in-process isaac run.")
+
+(defthen "the stdout has exactly {n:int} line" isaac.http.server-steps/stdout-has-exactly-n-lines)
+
+(defthen "the stdout line is a bearer secret of at least {n:int} characters"
+  isaac.http.server-steps/stdout-line-is-bearer-secret
+  "Captures the printed secret as :printed-secret for later substitution.")
+
+(defthen "the config file {path:string} never contains the printed secret"
+  isaac.http.server-steps/config-file-does-not-contain-printed-secret)
+
+(defthen "the log has no printed secret" isaac.http.server-steps/log-has-no-printed-secret)
+
+(defthen #"the isaac config path \"([^\"]+)\" is absent" isaac.http.server-steps/isaac-config-path-absent
+  "Asserts a dotted config path is missing after a mutation. Rewrites @prev onto :previous.")
+
+
 
 ;; endregion ^^^^^ Routing ^^^^^

@@ -52,7 +52,7 @@
     (let [manifest (read-manifest "resources/isaac-manifest.edn")]
       (should= #{:isaac.http/comm :isaac.http/identity :isaac.http/route}
                 (set (keys (:berths manifest))))
-      (should= #{:mcp-bridge} (set (keys (:isaac/cli manifest))))
+      (should= #{:mcp-bridge :server} (set (keys (:isaac/cli manifest))))
       (should-not (contains? manifest :isaac.http/route))
       (should= #{:http :comms} (set (keys (:isaac.config/schema manifest))))))
 

@@ -29,7 +29,10 @@
  :isaac/component {:server-runtime {:namespace isaac.http.component.runtime}
                    :http           {:namespace isaac.http.component.http}}
 
- :isaac/cli {:mcp-bridge {:usage     "mcp-bridge [options]"
+ :isaac/cli {:server {:usage     "server [options] [auth <subcommand>]"
+                      :summary   "Start the Isaac HTTP server, or mint/rotate/revoke/list principals"
+                      :namespace isaac.http.cli}
+             :mcp-bridge {:usage     "mcp-bridge [options]"
                           :summary   "stdio MCP server that proxies a turn to POST /mcp/turns/{id}"
                           :namespace isaac.mcp-bridge.cli}}
 
@@ -49,7 +52,11 @@
                                                                           :value-spec {:type :map
                                                                                        :schema {:hash {:type :string :validations [:present?]}
                                                                                                 :scopes {:type :any :validations [:keyword-set?]}
-                                                                                                :expires {:type :string}}}}
+                                                                                                :expires {:type :string}
+                                                                                                :previous {:type :map
+                                                                                                            :schema {:hash {:type :string :validations [:present?]}
+                                                                                                                     :scopes {:type :any :validations [:keyword-set?]}
+                                                                                                                     :expires {:type :string}}}}}}
                                                               :alerts {:type        :map
                                                                        :description "Auth attention alerts. Absent or true = on; false disables a kind."
                                                                        :schema      {:first-use {:type :boolean}

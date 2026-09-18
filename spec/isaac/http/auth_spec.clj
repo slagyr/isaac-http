@@ -11,6 +11,18 @@
     (should= "sha256:f82da6e2b2e51c046a2eaf10964ef184b69c0aee9892f10a2a7b657477d407e6"
              (sut/sha256 "ci-secret")))
 
+  (it "authenticates an overlap twin stored under the previous-secret key as name@prev"
+    (let [twin {:hash (sut/sha256 "old-secret") :scopes #{:hail/send}}
+          cfg  {:http {:auth {:principals {:ci (assoc {:hash (sut/sha256 "new-secret")
+                                                       :scopes #{:hail/send}}
+                                                      :previous twin)}}}}
+          principal (sut/authenticate cfg "old-secret")]
+      (should= (keyword "ci@prev") (:name principal))
+      (should (sut/authorized? principal :hail/send))))
+
+  (it "treats an overlap Instant expiry in the future as not expired"
+    (should-not (sut/expired? (str (.plus (java.time.Instant/now) (java.time.Duration/ofHours 24))))))
+
   (it "authenticates a matching principal and checks scopes"
     (let [cfg {:http {:auth {:principals {:ci {:hash (sut/sha256 "ci-secret")
                                                   :scopes #{:hail/send}}}}}}
