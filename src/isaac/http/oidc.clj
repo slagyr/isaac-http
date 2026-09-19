@@ -208,6 +208,32 @@
 (defn- refused [reason]
   {:reason reason})
 
+;; ----- config refs in rules -----
+;; A rule value may be a vector of keywords — a path into the live config —
+;; so a module's manifest can trust "the audience configured for this door"
+;; without knowing the deployment. A rule with an unresolved ref is inert.
+
+(defn- config-ref? [v]
+  (and (vector? v) (seq v) (every? keyword? v)))
+
+(defn- resolve-value [cfg v]
+  (cond
+    (config-ref? v) (get-in cfg v)
+    (map? v)        (reduce-kv (fn [m k x] (assoc m k (resolve-value cfg x))) {} v)
+    :else           v))
+
+(defn- unresolved? [v]
+  (cond
+    (map? v) (some unresolved? (vals v))
+    :else    (nil? v)))
+
+(defn resolve-rule
+  "The rule with its config refs resolved against `cfg`; nil when any ref has no value."
+  [rule cfg]
+  (let [resolved (resolve-value cfg (select-keys rule [:issuer :jwks :audience :claims]))]
+    (when-not (some unresolved? (vals resolved))
+      (merge rule resolved))))
+
 (defn- accepted [rule]
   (merge (:principal rule) {:oidc? true}))
 
@@ -218,9 +244,12 @@
   [token rule opts]
   (if-not (jwt-shaped? token)
     nil
-    (let [decoded (decode-jwt token)]
-      (if-not decoded
-        (refused :signature)
+    (let [decoded (decode-jwt token)
+          rule    (resolve-rule rule (:cfg opts))]
+      (cond
+        (nil? rule) nil
+        (not decoded) (refused :signature)
+        :else
         (let [{:keys [header payload sig signing-input]} decoded
               skew (skew-s opts)
               now  (now-epoch)

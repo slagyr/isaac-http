@@ -166,6 +166,12 @@
   (ensure-keys!)
   (isaac.http.auth/register-identity-entry! [:google-pubsub (rule)]))
 
+(defn register-trust-rule-with-config-refs! []
+  (ensure-keys!)
+  (isaac.http.auth/register-identity-entry!
+    [:google-pubsub (assoc (rule) :audience [:lantern :push :endpoint]
+                                  :claims {:email [:lantern :push :service-account] :email_verified true})]))
+
 (defn stub-jwks-serves! []
   (let [doc {:keys [(rsa-jwk (:public (ensure-keys!)) kid)]}]
     (serve-jwks! (fn [_hit] {:status 200 :body doc :headers {}}))))

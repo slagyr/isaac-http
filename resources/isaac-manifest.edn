@@ -1,16 +1,16 @@
 {:id        :isaac.http
- :version   "0.1.19"
+ :version   "0.1.20"
  :builtin?  true
  :factory   isaac.http.module/create-module
 
- :berths    {:isaac.http/identity {:description "Inbound request identity. Map contributions are data-shaped OIDC trust rules ({:issuer :jwks :audience :claims :principal}); a symbol contribution is a code verifier (fn [request] -> {:name ... :scopes #{...}} | nil)."
+ :berths    {:isaac.http/identity {:description "Inbound request identity. Map contributions are data-shaped OIDC trust rules ({:issuer :jwks :audience :claims :principal}); :issuer, :audience and :claims values may be config refs — a vector path such as [:google :push :endpoint] resolved against live config, and a rule with an unresolved ref is inert. A symbol contribution is a code verifier (fn [request] -> {:name ... :scopes #{...}} | nil)."
                                       :schema {:type :map
                                                :key-spec {:type :keyword}
                                                :value-spec {:type :map
                                                             :factory isaac.http.auth/register-identity-entry!
-                                                            :schema {:issuer {:type :string}
+                                                            :schema {:issuer {:type :any}
                                                                      :jwks {:type :string}
-                                                                     :audience {:type :string}
+                                                                     :audience {:type :any}
                                                                      :claims {:type :any}
                                                                      :principal {:type :any}
                                                                      :factory {:type :symbol}}}}}

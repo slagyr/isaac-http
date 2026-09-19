@@ -99,6 +99,19 @@
       (binding [sut/*fetch-jwks* (fn [_url] {:status 503 :body nil :headers {}})]
         (should= :jwks-unavailable (:reason (sut/verify token (fx/rule) {}))))))
 
+  (it "resolves config refs in the rule's audience and claims against the live config"
+    (let [token (fx/sign-rs256 (:private @rsa) @header (fx/claims {}))
+          rule  (assoc (fx/rule) :audience [:lantern :push :endpoint]
+                                 :claims {:email [:lantern :push :service-account] :email_verified true})
+          cfg   {:lantern {:push {:endpoint fx/audience :service-account fx/email}}}]
+      (should= :google-pubsub (:name (sut/verify token rule {:cfg cfg})))
+      (should= :audience (:reason (sut/verify token rule {:cfg {:lantern {:push {:endpoint "elsewhere" :service-account fx/email}}}})))))
+
+  (it "treats a rule with an unresolved config ref as absent"
+    (let [token (fx/sign-rs256 (:private @rsa) @header (fx/claims {}))
+          rule  (assoc (fx/rule) :audience [:lantern :push :endpoint])]
+      (should-be-nil (sut/verify token rule {:cfg {}}))))
+
   (it "returns nil for a non-JWT bearer so hash auth can try next"
     (should-be-nil (sut/verify "not-a-jwt" (fx/rule) {})))
 

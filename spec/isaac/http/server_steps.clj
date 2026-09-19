@@ -382,6 +382,9 @@
 (defn oidc-trust-rule-registered []
   (oidc-fixture/register-trust-rule!))
 
+(defn oidc-trust-rule-registered-with-config-refs []
+  (oidc-fixture/register-trust-rule-with-config-refs!))
+
 (defn jwks-stub-serves-issuer-key []
   (oidc-fixture/stub-jwks-serves!))
 
@@ -837,9 +840,12 @@
                      (:headers resp))]
     (g/should-be-nil actual)))
 
-(defn- parse-header-line [header]
-  (let [[name value] (str/split header #":\s*" 2)]
-    {name value}))
+(defn- parse-header-line
+  "\"Name: value\" — several headers may be joined with \"; \"."
+  [header]
+  (into {}
+        (map (fn [line] (vec (str/split (str/trim line) #":\s*" 2))))
+        (str/split header #";\s*")))
 
 (defn post-request-with-body [path body]
   (let [port (g/get :server-port)
@@ -1048,6 +1054,10 @@
 (defgiven "an OIDC trust rule for google-pubsub is registered"
   isaac.http.server-steps/oidc-trust-rule-registered
   "Registers a data-shaped :isaac.http/identity rule for the lantern fixture issuer.")
+
+(defgiven "an OIDC trust rule for google-pubsub is registered with config refs"
+  isaac.http.server-steps/oidc-trust-rule-registered-with-config-refs
+  "Same rule, but :audience and :claims/:email are config paths (lantern.push.endpoint / .service-account).")
 
 (defgiven "the JWKS stub serves the issuer key"
   isaac.http.server-steps/jwks-stub-serves-issuer-key)

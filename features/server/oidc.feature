@@ -102,3 +102,30 @@ Feature: OIDC/JWT identity (isaac-4sqh)
       | accounts.lantern.test                        |
       | projects/harbor/topics/push                  |
     And the stdout does not contain "sha256"
+
+  Scenario: a trust rule's audience and claims can point at config, so the manifest never carries deployment values
+    Given config:
+      | http.host                   | 0.0.0.0                     |
+      | lantern.push.endpoint        | projects/harbor/topics/push |
+      | lantern.push.service-account | pubsub@harbor.test          |
+    And an OIDC trust rule for google-pubsub is registered with config refs
+    And the JWKS stub serves the issuer key
+    And a signed JWT bearer of kind "valid"
+    And the Isaac server is started
+    When the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 200
+    When isaac is run with "http auth list"
+    Then the stdout matches:
+      | pattern                     |
+      | projects/harbor/topics/push |
+
+  Scenario: a trust rule whose config ref is unset is inert and the JWT falls through as unknown
+    Given an OIDC trust rule for google-pubsub is registered with config refs
+    And the JWKS stub serves the issuer key
+    And a signed JWT bearer of kind "valid"
+    And the Isaac server is started
+    When the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 401
+    And the log has entries matching:
+      | event         | reason   |
+      | :auth/refused | :unknown |

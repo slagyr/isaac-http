@@ -19,4 +19,10 @@
                        :type           :map
                        :snapshot-only? true
                        :key-spec       {:type :string}
-                       :value-spec     {:name :provider :type :map :schema {}}}}}}
+                       :value-spec     {:name :provider :type :map :schema {}}}}
+  :lantern   {:schema {:name        :lantern
+                       :type        :map
+                       :description "Test-only: the lantern fixture issuer's door, for OIDC trust rules that point at config."
+                       :schema      {:push {:type   :map
+                                            :schema {:endpoint        {:type :string}
+                                                     :service-account {:type :string}}}}}}}}

@@ -53,7 +53,7 @@
 
 (defn- oidc-identity [cfg bearer]
   (when (and (seq bearer) (oidc/jwt-shaped? bearer) (seq (oidc-rules)))
-    (let [opts     {:http (:http cfg)}
+    (let [opts     {:http (:http cfg) :cfg cfg}
           hits     (keep (fn [rule] (oidc/verify bearer rule opts)) (oidc-rules))
           accepted (first (remove :reason hits))
           refused  (remove #(= :issuer (:reason %)) (filter :reason hits))]
