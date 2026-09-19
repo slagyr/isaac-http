@@ -36,12 +36,12 @@
 
   (describe "command registration"
 
-    (it "registers the server command"
+    (it "registers the http command"
       (module-loader/process-manifest-berths! (module-loader/builtin-index))
-      (should-not-be-nil (registry/get-command "server")))
+      (should-not-be-nil (registry/get-command "http")))
 
-    (it "lists auth mint rotate revoke list as server subcommands"
-      (let [names (set (map :name (cli-api/subcommands :server)))]
+    (it "lists auth mint rotate revoke list as http subcommands"
+      (let [names (set (map :name (cli-api/subcommands :http)))]
         (should (contains? names "auth mint"))
         (should (contains? names "auth rotate"))
         (should (contains? names "auth revoke"))
@@ -164,24 +164,23 @@
 
     (it "prints command help and returns 0 when --help is requested"
       (with-redefs [sut/parse-option-map  (fn [_] {:options {:help true} :errors []})
-                    registry/get-command  (fn [_] {:name "server"})
-                    registry/command-help (fn [_] "server help")]
+                    registry/get-command  (fn [_] {:name "http"})
+                    registry/command-help (fn [_] "http help")]
         (let [output (with-out-str (should= 0 (sut/run-fn {:_raw-args ["--help"]})))]
-          (should (re-find #"server help" output)))))
+          (should (re-find #"http help" output)))))
 
     (it "prints parse errors and returns 1"
       (with-redefs [sut/parse-option-map (fn [_] {:options {} :errors ["bad arg"]})]
         (let [output (with-out-str (should= 1 (sut/run-fn {:_raw-args ["--bogus"]})))]
           (should (re-find #"bad arg" output)))))
 
-    (it "delegates to run with parsed options merged into opts"
-      (let [captured (atom nil)]
-        (with-redefs [sut/parse-option-map (fn [_] {:options {:port "4000" :host "127.0.0.1"} :errors []})
-                      sut/run              (fn [opts]
-                                             (reset! captured opts)
-                                             0)]
-          (should= 0 (sut/run-fn {:_raw-args ["--port" "4000"] :home "/tmp/server-home"}))
-          (should= {:home "/tmp/server-home" :port "4000" :host "127.0.0.1"} @captured))))
+    (it "prints usage and does not start a listener when invoked with no subcommand"
+      (let [started? (atom false)]
+        (with-redefs [sut/run (fn [_] (reset! started? true) 0)]
+          (let [output (with-out-str (should= 0 (sut/run-fn {:_raw-args []})))]
+            (should-not @started?)
+            (should (re-find #"Usage: isaac http" output))
+            (should (re-find #"auth mint" output))))))
 
     (it "lists principals without starting the HTTP server"
       (let [started? (atom false)]
@@ -202,7 +201,7 @@
         (let [output (with-out-str (sut/auth-list! "/tmp/root"))]
           (should (re-find #"ci\s+hail/send\s+-\s+2026-09-18T10:00:00Z" output)))))
 
-    (it "runs isaac server auth mint through main without starting HTTP"
+    (it "runs isaac http auth mint through main without starting HTTP"
       (let [called (atom nil)]
         (with-redefs [isaac.http.auth-cli/mint! (fn [root name opts]
                                                   (reset! called {:root root :name name :opts opts})
@@ -212,12 +211,12 @@
           (let [err (StringWriter.)
                 out (StringWriter.)]
             (binding [*out* out *err* err]
-              (should= 0 (main/run ["--root" "/tmp/auth-home" "server" "auth" "mint" "ci" "--scopes" "hail/send"])))
+              (should= 0 (main/run ["--root" "/tmp/auth-home" "http" "auth" "mint" "ci" "--scopes" "hail/send"])))
             (should= "sekrit-token-value-0123456789ab\n" (str out))
             (should= "" (str err))
             (should= "ci" (:name @called))))))
 
-    (it "dispatches server auth mint without starting the HTTP server"
+    (it "dispatches http auth mint without starting the HTTP server"
       (let [called (atom nil)]
         (with-redefs [isaac.http.auth-cli/mint! (fn [root name opts]
                                                   (reset! called {:root root :name name :opts opts})

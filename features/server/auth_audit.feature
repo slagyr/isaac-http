@@ -1,7 +1,7 @@
 Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
   Every request is attributed to a principal in the log; refusals say why.
   Last-use per principal is persisted (at most once a minute) for
-  `isaac server auth list`. Notable auth events reach the attention comm the
+  `isaac http auth list`. Notable auth events reach the attention comm the
   same way burst detection does (isaac-burst): first ever use of a principal,
   use of an expired or revoked secret, and a principal expiring within seven
   days. Thresholds live under `:http :auth :alerts` and hot-reload.
@@ -59,7 +59,7 @@ Feature: Auth audit and alerts (isaac-2a2x, epic isaac-gym1)
     Then the isaac file "state/auth/last-used.edn" exists with:
       | path | value                |
       | ci   | 2026-09-18T10:00:00Z |
-    When isaac is run with "server auth list"
+    When isaac is run with "http auth list"
     Then the stdout lines match:
       | #"ci\s+hail/send\s+-\s+2026-09-18T10:00:00Z" |
 

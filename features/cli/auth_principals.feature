@@ -1,5 +1,5 @@
 Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
-  `isaac server auth mint|rotate|revoke|list` manages `:http :auth :principals`.
+  `isaac http auth mint|rotate|revoke|list` manages `:http :auth :principals`.
   The secret is a one-time event: mint/rotate print it exactly once, on stdout,
   alone; only its SHA-256 hash is written to config (through the config
   mutation API, so a running server picks it up on hot reload). The secret
@@ -9,7 +9,7 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
     Given an Isaac root at "target/auth-principals-state"
 
   Scenario: mint prints the secret once and writes only its hash to config
-    When isaac is run with "server auth mint ci --scopes hail/send"
+    When isaac is run with "http auth mint ci --scopes hail/send"
     Then the exit code is 0
     And the stdout has exactly 1 line
     And the stdout line is a bearer secret of at least 32 characters
@@ -22,7 +22,7 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
 
   Scenario: the minted secret authenticates as that principal
     Given a fixture route GET "/fixture/scoped" requires scope "hail/send"
-    When isaac is run with "server auth mint ci --scopes hail/send"
+    When isaac is run with "http auth mint ci --scopes hail/send"
     And the Isaac server is started
     And the client sends GET "/fixture/scoped" with header "Authorization: Bearer <the printed secret>"
     Then the response status is 200
@@ -31,20 +31,20 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
       | :http/request | ci        |
 
   Scenario: mint with --expires records the expiry
-    When isaac is run with "server auth mint ci --scopes hail/send --expires 2027-01-31"
+    When isaac is run with "http auth mint ci --scopes hail/send --expires 2027-01-31"
     Then the exit code is 0
     And the isaac config path "http.auth.principals.ci.expires" is "2027-01-31"
 
   Scenario: mint refuses an existing name
     Given principal "ci" is configured with secret "ci-secret" and scopes "hail/send"
-    When isaac is run with "server auth mint ci --scopes hail/send"
+    When isaac is run with "http auth mint ci --scopes hail/send"
     Then the exit code is 1
     And the stderr contains "already exists"
     And the stderr contains "rotate"
     And the stdout is empty
 
   Scenario: mint requires at least one scope
-    When isaac is run with "server auth mint ci"
+    When isaac is run with "http auth mint ci"
     Then the exit code is 1
     And the stderr contains "--scopes"
     And the stdout is empty
@@ -52,7 +52,7 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
   Scenario: rotate replaces the hash and the old secret stops working
     Given principal "ci" is configured with secret "old-secret" and scopes "hail/send"
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
-    When isaac is run with "server auth rotate ci"
+    When isaac is run with "http auth rotate ci"
     Then the exit code is 0
     And the stdout has exactly 1 line
     When the Isaac server is started
@@ -64,7 +64,7 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
   Scenario: rotate with --overlap keeps the old secret valid until the window ends
     Given principal "ci" is configured with secret "old-secret" and scopes "hail/send"
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
-    When isaac is run with "server auth rotate ci --overlap 24h"
+    When isaac is run with "http auth rotate ci --overlap 24h"
     Then the exit code is 0
     And the isaac config path "http.auth.principals.ci@prev.expires" matches "20[0-9]{2}-[0-9]{2}-[0-9]{2}T.*"
     And the isaac config path "http.auth.principals.ci@prev.scopes" is "#{:hail/send}"
@@ -78,20 +78,20 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
   Scenario: revoke removes the principal and its overlap twin
     Given principal "ci" is configured with secret "ci-secret" and scopes "hail/send"
     And principal "ci@prev" is configured with secret "older-secret" and scopes "hail/send" expiring "2099-01-01"
-    When isaac is run with "server auth revoke ci"
+    When isaac is run with "http auth revoke ci"
     Then the exit code is 0
     And the isaac config path "http.auth.principals.ci" is absent
     And the isaac config path "http.auth.principals.ci@prev" is absent
 
   Scenario: revoke of an unknown principal is an error
-    When isaac is run with "server auth revoke ghost"
+    When isaac is run with "http auth revoke ghost"
     Then the exit code is 1
     And the stderr contains "ghost"
 
   Scenario: list shows name, scopes and expiry, never a hash or secret
     Given principal "ci" is configured with secret "ci-secret" and scopes "hail/send" expiring "2027-01-31"
     And principal "admin" is configured with secret "root-secret" and scopes "*"
-    When isaac is run with "server auth list"
+    When isaac is run with "http auth list"
     Then the exit code is 0
     And the stdout lines match:
       | #"admin\s+\*\s+-\s+never"                 |
@@ -106,7 +106,16 @@ Feature: Managing principals from the CLI (isaac-auie, epic isaac-gym1)
     And principal "admin" is configured with secret "root-secret" and scopes "*"
     And a fixture route GET "/fixture/scoped" requires scope "hail/send"
     And the Isaac server is started
-    When isaac is run with "server auth mint late --scopes hail/send"
+    When isaac is run with "http auth mint late --scopes hail/send"
     And the isaac config is reloaded
     And the client sends GET "/fixture/scoped" with header "Authorization: Bearer <the printed secret>"
     Then the response status is 200
+
+  Scenario: isaac http --help lists the auth subcommands and starts nothing
+    When isaac is run with "http --help"
+    Then the stdout contains "Usage: isaac http"
+    And the stdout contains "auth mint"
+    And the stdout contains "auth rotate"
+    And the stdout contains "auth revoke"
+    And the stdout contains "auth list"
+    And the exit code is 0

@@ -1,5 +1,5 @@
 {:id        :isaac.http
- :version   "0.1.17"
+ :version   "0.1.18"
  :builtin?  true
  :factory   isaac.http.module/create-module
 
@@ -29,9 +29,9 @@
  :isaac/component {:server-runtime {:namespace isaac.http.component.runtime}
                    :http           {:namespace isaac.http.component.http}}
 
- :isaac/cli {:server {:usage     "server [options] [auth <subcommand>]"
-                      :summary   "Start the Isaac HTTP server, or mint/rotate/revoke/list principals"
-                      :namespace isaac.http.cli}
+ :isaac/cli {:http {:usage     "http <subcommand> [options]"
+                    :summary   "HTTP module: manage principals (auth mint|rotate|revoke|list)"
+                    :namespace isaac.http.cli}
              :mcp-bridge {:usage     "mcp-bridge [options]"
                           :summary   "stdio MCP server that proxies a turn to POST /mcp/turns/{id}"
                           :namespace isaac.mcp-bridge.cli}}

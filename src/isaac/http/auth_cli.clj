@@ -1,5 +1,5 @@
 (ns isaac.http.auth-cli
-  "isaac server auth mint|rotate|revoke|list — principal secrets."
+  "isaac http auth mint|rotate|revoke|list — principal secrets."
   (:require
     [clojure.string :as str]
     [isaac.config.loader :as loader]

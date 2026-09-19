@@ -5,7 +5,7 @@
 
 (describe "server manifest"
 
-  (it "declares server CLI command contributions"
+  (it "declares http CLI command contributions"
     (let [commands (->> "resources/isaac-manifest.edn"
                         slurp
                         edn/read-string
@@ -13,7 +13,7 @@
                         keys
                         (map name)
                         set)]
-      (should= #{"mcp-bridge" "server"}
+      (should= #{"mcp-bridge" "http"}
                commands)))
 
   (it "is a builtin module"

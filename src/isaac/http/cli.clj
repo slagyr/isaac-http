@@ -18,9 +18,7 @@
     [isaac.http.audit :as audit]
     [isaac.http.auth :as auth]
     [isaac.http.lifecycle :as lifecycle]
-    [isaac.http.runtime :as runtime]
-    [isaac.runner.cli :as runner-cli]
-    ))
+    [isaac.http.runtime :as runtime]))
 
 (defonce ^:private shutdown-hook-registered? (atom false))
 
@@ -91,19 +89,10 @@
           1)))))
 
 (def option-spec
-  [["-p" "--port N" "Port to listen on (default: 6674)"]
-   ["-H" "--host H" "Host to bind to (default: 127.0.0.1)"]
-   ["-d" "--dev" "Enable development reload mode"]
-   [nil  "--runtime RUNTIME" "Server runtime: bb (default) or jvm"
-    :default "bb"]
-   [nil  "--logs" "Tail and print the log file while the server runs"]
-   [nil  "--no-color" "Disable color output for --logs"]
-   [nil  "--zebra" "Enable zebra striping for --logs"]
-   ["-h" "--help" "Show help"]])
+  [["-h" "--help" "Show help"]])
 
 (defn- parse-option-map [raw-args]
-  (let [raw-args (vec (take-while #(not= "auth" %) raw-args))
-        {:keys [options errors]} (tools-cli/parse-opts raw-args option-spec)]
+  (let [{:keys [options errors]} (tools-cli/parse-opts raw-args option-spec)]
     {:options (->> options
                    (remove (comp nil? val))
                    (into {}))
@@ -139,7 +128,7 @@
 (defn- run-auth-mint [opts args]
   (let [{:keys [arguments options errors]} (tools-cli/parse-opts args auth-mint-spec)]
     (cond
-      (:help options) (do (println "Usage: isaac server auth mint <name> --scopes a,b[,…] [--expires YYYY-MM-DD]\nThe secret is printed once on stdout and never written to config.") 0)
+      (:help options) (do (println "Usage: isaac http auth mint <name> --scopes a,b[,…] [--expires YYYY-MM-DD]\nThe secret is printed once on stdout and never written to config.") 0)
       (seq errors)    (do (doseq [e errors] (binding [*out* *err*] (println e))) 1)
       (empty? arguments) (do (binding [*out* *err*] (println "missing principal name")) 1)
       :else (print-secret-or-error! (auth-cli/mint! (auth-root opts) (first arguments) options)))))
@@ -147,7 +136,7 @@
 (defn- run-auth-rotate [opts args]
   (let [{:keys [arguments options errors]} (tools-cli/parse-opts args auth-rotate-spec)]
     (cond
-      (:help options) (do (println "Usage: isaac server auth rotate <name> [--overlap 24h]") 0)
+      (:help options) (do (println "Usage: isaac http auth rotate <name> [--overlap 24h]") 0)
       (seq errors)    (do (doseq [e errors] (binding [*out* *err*] (println e))) 1)
       (empty? arguments) (do (binding [*out* *err*] (println "missing principal name")) 1)
       :else (print-secret-or-error! (auth-cli/rotate! (auth-root opts) (first arguments) options)))))
@@ -192,7 +181,7 @@
   0)
 
 (defn- auth-help []
-  (str "Usage: isaac server auth <mint|rotate|revoke|list> [options]\n"
+  (str "Usage: isaac http auth <mint|rotate|revoke|list> [options]\n"
        "Mint, rotate, revoke, or list HTTP auth principals.\n"
        "The secret is printed once on stdout (mint/rotate) and never written to config.\n"
        "Subcommands:\n"
@@ -212,42 +201,39 @@
       (nil "--help" "-h") (do (println (auth-help)) 0)
       (do (binding [*out* *err*] (println (str "Unknown auth subcommand: " cmd))) 1))))
 
+(defn- http-usage []
+  (str "Usage: isaac http <subcommand> [options]\n"
+       "HTTP module: manage principals (auth mint|rotate|revoke|list)\n"
+       "isaac http starts nothing — Isaac starts things.\n"
+       "Subcommands:\n"
+       "  auth mint <name> --scopes a,b[,…] [--expires YYYY-MM-DD]  Mint a principal secret (printed once)\n"
+       "  auth rotate <name> [--overlap 24h]                        Replace a principal secret\n"
+       "  auth revoke <name>                                        Remove a principal\n"
+       "  auth list                                                 List principals (never secrets)"))
+
 (defn- dispatch-run [opts raw-args]
   (cond
     (= "auth" (first raw-args))
     (run-auth opts (rest raw-args))
 
     :else
-    (if-let [exit (runtime/maybe-trampoline! opts raw-args)]
-      exit
-      (run opts))))
+    (do (println (http-usage)) 0)))
 
 (defn run-fn [opts]
   (let [raw-args (or (:_raw-args opts) [])]
     (if (= "auth" (first raw-args))
       (run-auth opts (rest raw-args))
-      (cli-common/standard-run-fn "server" parse-option-map
+      (cli-common/standard-run-fn "http" parse-option-map
         (fn [merged] (dispatch-run merged raw-args))
         opts))))
 
-(defonce ^:private wrap-runner-auth-list!
-  (do
-    (alter-var-root #'runner-cli/run-fn
-                    (fn [original]
-                      (fn [opts]
-                        (let [raw-args (or (:_raw-args opts) [])]
-                          (if (= "auth" (first raw-args))
-                            (run-fn opts)
-                            (original opts))))))
-    true))
-
 ;; ----- :isaac/cli berth implementation -----
 
-(defmethod cli-api/run :server [_id opts]
+(defmethod cli-api/run :http [_id opts]
   (run-fn opts))
 
-(defmethod cli-api/option-spec :server [_id]
+(defmethod cli-api/option-spec :http [_id]
   option-spec)
 
-(defmethod cli-api/subcommands :server [_id]
+(defmethod cli-api/subcommands :http [_id]
   auth-subcommands)
