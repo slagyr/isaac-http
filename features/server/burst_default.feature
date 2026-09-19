@@ -79,3 +79,19 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
       | cooldown-ms | 600000 |
       | throttle?   | true   |
       | notify?     | true   |
+
+  @wip
+  Scenario: a route that refuses on its own counts toward the burst
+    The counter observes the RESPONSE status (401/403) in wrap-burst, not
+    wrap-auth's refusal branch — so a route doing its own verification (the
+    Google push door checking an OIDC token, say) is covered without knowing
+    burst control exists.
+    Given a fixture route POST "/fixture/self-auth" declares no scope and refuses every request with 401
+    And principal "door" is configured with secret "door-secret" and scopes "*"
+    And the Isaac server is started
+    When the client sends POST "/fixture/self-auth" with header "X-Forwarded-For: 203.0.113.9" 10 times
+    Then the log has entries matching:
+      | level | event                  | client      | count |
+      | :warn | :server/burst-detected | 203.0.113.9 | 10    |
+    When the client sends POST "/fixture/self-auth" with header "X-Forwarded-For: 203.0.113.9" 1 times
+    Then the response status is 429
