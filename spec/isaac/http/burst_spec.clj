@@ -19,7 +19,7 @@
 
 (defn- handler-for [burst-cfg]
   (http/create-handler {:cfg {:http {:auth  {:token token}
-                                       :burst burst-cfg}}}))
+                                     :burst burst-cfg}}}))
 
 (defn- unauth
   ([handler client] (unauth handler client "/.env"))
@@ -116,11 +116,34 @@
       (should= 401 (:status (unauth handler "100.64.1.9")))
       (should= 0 (count (events :server/burst-throttled)))))
 
-  (it "is off when the burst group is absent"
+  (it "is on with defaults when the burst group is absent"
     (let [handler (http/create-handler {:cfg {:http {:auth {:token token}}}})]
+      (dotimes [_ 10] (unauth handler "203.0.113.9"))
+      (should= 1 (count (events :server/burst-detected)))
+      (should= 429 (:status (unauth handler "203.0.113.9")))))
+
+  (it "is off when enabled is false"
+    (let [handler (handler-for {:enabled false})]
       (dotimes [_ 40] (unauth handler "203.0.113.9"))
       (should= 0 (count (events :server/burst-detected)))
       (should= 401 (:status (unauth handler "203.0.113.9")))))
+
+  (it "counts a 401 produced by the route itself after wrap-auth lets the request through"
+    (let [inner   (fn [_] {:status 401 :headers {"Content-Type" "text/plain"} :body "nope"})
+          handler (http/create-handler {:cfg     {:http {:auth {:token token}}}
+                                        :handler inner})]
+      (dotimes [_ 10]
+        (handler {:request-method :get
+                  :uri            "/fixture/self-auth"
+                  :headers        {"authorization"   (str "Bearer " token)
+                                   "x-forwarded-for" "203.0.113.9"}}))
+      (should= 1 (count (events :server/burst-detected)))))
+
+  (it "an explicit threshold overrides the default and the rest keep theirs"
+    (let [handler (handler-for {:threshold 3})]
+      (dotimes [_ 3] (unauth handler "203.0.113.9"))
+      (should= 1 (count (events :server/burst-detected)))
+      (should= 429 (:status (unauth handler "203.0.113.9")))))
 
   (it "detects a burst without the agent delivery queue on the classpath"
     (with-redefs [burst/delivery-enqueue-fn (constantly nil)]

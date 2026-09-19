@@ -1,14 +1,14 @@
 Feature: Unauthenticated burst control
   A vulnerability scanner sent ~600 requests through Tailscale Funnel on
   2026-09-11; every one got a 401 in about a millisecond and nobody was told.
-  The auth middleware now counts unauthenticated responses per client
+  wrap-burst counts unauthenticated (401/403) responses per client
   (:client — first X-Forwarded-For hop, else the socket peer) in a sliding
   window. Over the threshold: one :server/burst-detected and ONE attention
   post per burst, whatever its length; when the client goes quiet for the
-  cooldown, :server/burst-ended with the total. Optionally (throttle? true,
-  default false) a flagged client is answered with a bare 429 before the auth
+  cooldown, :server/burst-ended with the total. Optionally (throttle? true)
+  a flagged client is answered with a bare 429 before the auth
   check for the cooldown — never for loopback or tailnet clients. Config is
-  the :http :burst group; absent group = off (isaac-udnm).
+  the :http :burst group; on by default, off with :enabled false (isaac-xc08).
 
   Background:
     Given an Isaac root at "target/burst-state"
@@ -21,6 +21,7 @@ Feature: Unauthenticated burst control
       | http.burst.threshold   | 30          |
       | http.burst.window-ms   | 60000       |
       | http.burst.cooldown-ms | 600000      |
+      | http.burst.throttle?   | false       |
       | attention.notify.comm    | discord     |
       | attention.notify.target  | boiler-room |
     And the Isaac server is started
@@ -105,3 +106,4 @@ Feature: Unauthenticated burst control
       | :cooldown-ms |
       | :notify\?    |
       | :throttle\?  |
+      | :enabled     |

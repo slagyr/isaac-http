@@ -105,7 +105,16 @@
                     (thunk))
                   (thunk)))]
       (with-redefs [runner-cli/block! (fn [] nil)
-                    server/block!     (fn [] nil)]
+                    server/block!     (fn [] nil)
+                    loader/load-config-result
+                    (let [orig loader/load-config-result]
+                      (fn [& args]
+                        (let [result (apply orig args)
+                              cfg    (:config result)]
+                          (if (or (nil? cfg) (false? (get-in cfg [:http :burst :enabled])))
+                            result
+                            (assoc-in result [:config :http :burst]
+                                      (burst/resolved (get-in cfg [:http :burst])))))))]
         (run)))))
 
 (froot/register-root-setup-hook!
@@ -284,6 +293,11 @@
 (defn- config-file-path []
   (str (g/get :root) "/config/isaac.edn"))
 
+(defn- fill-burst-defaults [cfg]
+  (if (false? (get-in cfg [:http :burst :enabled]))
+    cfg
+    (assoc-in cfg [:http :burst] (burst/resolved (get-in cfg [:http :burst])))))
+
 (defn- stamp-loaded-default-crew [cfg]
   (if (or (nil? cfg) (contains? (or (:defaults cfg) {}) :crew))
     cfg
@@ -317,12 +331,15 @@
       (assoc result :config cfg :errors (vec (remove crew-schema-error? (:errors result)))))))
 
 (defn- load-server-config [root fs*]
-  (:config (load-server-config-result root fs*)))
+  (fill-burst-defaults (:config (load-server-config-result root fs*))))
 
 ;; region ----- Setup -----
 
 (defn fixture-ok-handler [_request]
   {:status 200 :headers {"Content-Type" "text/plain"} :body "OK"})
+
+(defn fixture-refuse-401-handler [_request]
+  {:status 401 :headers {"Content-Type" "text/plain"} :body "Unauthorized"})
 
 (defn fixture-fine-scope-handler [request]
   (auth/require-scope! request :hail/prompt-override)
@@ -385,6 +402,13 @@
                                   'isaac.http.server-steps/fixture-fine-scope-handler
                                   'isaac.http.server-steps/fixture-ok-handler)}
                 scope (assoc :scope (keyword scope))))))
+
+(defn fixture-route-refuses-401 [method path]
+  (g/update! :fixture-routes
+             (fnil conj [])
+             {:method  (keyword (str/lower-case method))
+              :path    path
+              :handler 'isaac.http.server-steps/fixture-refuse-401-handler}))
 
 (defn- deep-merge [a b]
   (if (and (map? a) (map? b))
@@ -513,7 +537,7 @@
         runtime-state  home
         load-result    (with-server-fs #(load-server-config-result home (server-fs)))
         cfg-map        (let [fs*     (server-fs)
-                             base    (:config load-result)
+                             base    (fill-burst-defaults (:config load-result))
                              merged  (deep-merge base
                                                  (merge (or (g/get :server-config) {})
                                                         (when-let [providers (g/get :provider-configs)]
@@ -1012,6 +1036,9 @@
 
 (defgiven #"a fixture route (\w+) \"([^\"]+)\" requires scope \"([^\"]+)\" and its handler requires \"([^\"]+)\"$"
   isaac.http.server-steps/fixture-route)
+
+(defgiven #"a fixture route (\w+) \"([^\"]+)\" declares no scope and refuses every request with 401$"
+  isaac.http.server-steps/fixture-route-refuses-401)
 
 (defgiven "server config:" isaac.http.server-steps/server-config-applied
   "Applies server harness settings from a key/value table (log.output,

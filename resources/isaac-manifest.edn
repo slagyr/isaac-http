@@ -1,5 +1,5 @@
 {:id        :isaac.http
- :version   "0.1.16"
+ :version   "0.1.17"
  :builtin?  true
  :factory   isaac.http.module/create-module
 
@@ -64,12 +64,15 @@
                                                                                      :revoked   {:type :boolean}
                                                                                      :expiring  {:type :boolean}}}}}
                                   :burst      {:type        :map
-                                               :description "Unauthenticated burst control. Absent group = off."
-                                               :schema      {:threshold   {:type :int :description "Unauthenticated responses that trip a burst"}
-                                                             :window-ms   {:type :int :description "Sliding window in milliseconds"}
-                                                             :cooldown-ms {:type :int :description "Quiet period that ends a burst"}
-                                                             :notify?     {:type :boolean :description "Post attention on burst start and end"}
-                                                             :throttle?   {:type :boolean :description "Answer flagged clients with 429"}}}
+                                               :description "Unauthenticated burst control. On by default; :enabled false turns it off."
+                                               :default     {:enabled true :threshold 10 :window-ms 60000 :cooldown-ms 600000 :throttle? true :notify? true}
+                                               :coercions   [[:default {:enabled true :threshold 10 :window-ms 60000 :cooldown-ms 600000 :throttle? true :notify? true}]]
+                                               :schema      {:enabled     {:type :boolean :default true :coercions [[:default true]] :description "Master switch; false disables burst control"}
+                                                             :threshold   {:type :int :default 10 :coercions [[:default 10]] :description "Unauthenticated responses that trip a burst"}
+                                                             :window-ms   {:type :int :default 60000 :coercions [[:default 60000]] :description "Sliding window in milliseconds"}
+                                                             :cooldown-ms {:type :int :default 600000 :coercions [[:default 600000]] :description "Quiet period that ends a burst"}
+                                                             :notify?     {:type :boolean :default true :coercions [[:default true]] :description "Post attention on burst start and end"}
+                                                             :throttle?   {:type :boolean :default true :coercions [[:default true]] :description "Answer flagged clients with 429"}}}
                                   :host  {:type :string :description "Bind host"}
                                   :port  {:type :int :description "Bind port"}}}}
 

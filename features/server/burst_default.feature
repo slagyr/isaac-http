@@ -17,7 +17,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
       | attention.notify.comm   | discord     |
       | attention.notify.target | boiler-room |
 
-  @wip
   Scenario: with no burst config at all, ten unauthenticated requests trip a burst and the client is throttled
     Given the Isaac server is started
     When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 10 times
@@ -28,7 +27,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
     When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 1 times
     Then the response status is 429
 
-  @wip
   Scenario: burst control can be turned off explicitly
     Given config:
       | key                 | value |
@@ -41,7 +39,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
       | :server/burst-detected |
     And the directory "comm/delivery/pending" has exactly 0 files
 
-  @wip
   Scenario: an explicit knob overrides its default and the others keep theirs
     Given config:
       | key                  | value |
@@ -54,7 +51,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
     When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 1 times
     Then the response status is 429
 
-  @wip
   Scenario: turning burst control off on hot reload releases a throttled client
     Given config:
       | key             | value |
@@ -68,7 +64,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
     And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 1 times
     Then the response status is 401
 
-  @wip
   Scenario: the effective burst config is visible with its defaults filled in
     When isaac is run with "config get http.burst"
     Then the stdout EDN contains:
@@ -80,7 +75,6 @@ Feature: Burst control is on by default (isaac-udnm follow-up)
       | throttle?   | true   |
       | notify?     | true   |
 
-  @wip
   Scenario: a route that refuses on its own counts toward the burst
     The counter observes the RESPONSE status (401/403) in wrap-burst, not
     wrap-auth's refusal branch — so a route doing its own verification (the

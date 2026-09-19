@@ -89,17 +89,15 @@
           (do
             (log/warn :auth/refused :principal (or (:name principal) remembered) :reason reason :uri (:uri request))
             (audit/note-refusal! cfg principal reason remembered)
-            (when-let [burst-cfg (get-in cfg [:http :burst])]
-              (burst/record-unauthenticated! burst-cfg cfg (client-address request) (:uri request)))
             (refused-response status)))))))
 
 (defn wrap-burst
-  "Optional unauthenticated burst control. Absent :http :burst = off.
-   Throttle (when on) answers a flagged client with 429 before auth."
+  "Unauthenticated burst control. On by default; :http :burst :enabled false turns it off.
+   Counts 401/403 responses from any source. Throttle answers a flagged client with 429 before auth."
   [opts handler]
   (fn [request]
     (let [cfg       (request-cfg opts)
-          burst-cfg (get-in cfg [:http :burst])]
+          burst-cfg (burst/resolved (get-in cfg [:http :burst]))]
       (if-not burst-cfg
         (handler request)
         (do
@@ -107,7 +105,10 @@
           (let [client (client-address request)]
             (if (burst/throttle-client? burst-cfg client)
               (burst/throttled-response! burst-cfg client)
-              (handler request))))))))
+              (let [response (handler request)]
+                (when (contains? #{401 403} (:status response))
+                  (burst/record-unauthenticated! burst-cfg cfg client (:uri request)))
+                response))))))))
 
 (defn wrap-logging [handler]
   (fn [request]

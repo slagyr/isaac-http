@@ -1,10 +1,25 @@
 (ns isaac.http.burst
-  "Per-client sliding window of unauthenticated responses.
-   Absent :http :burst group = off. Memory only; no transcript, no disk."
+  "Per-client sliding window of unauthenticated (401/403) responses.
+   On by default. Off only with :http :burst :enabled false. Memory only; no transcript, no disk."
   (:require
     [clojure.string :as str]
     [isaac.log.file :as log-file]
     [isaac.logger :as log]))
+
+(def defaults
+  {:enabled     true
+   :threshold   10
+   :window-ms   60000
+   :cooldown-ms 600000
+   :throttle?   true
+   :notify?     true})
+
+(defn resolved
+  "Merge schema defaults. Nil when the operator turned burst control off."
+  [burst-cfg]
+  (let [merged (merge defaults burst-cfg)]
+    (when-not (false? (:enabled merged))
+      merged)))
 
 (defonce ^:private state* (atom {}))
 
@@ -42,8 +57,8 @@
       :else                paths)))
 
 (defn- apply-hit [st now burst-cfg uri]
-  (let [window-ms   (or (:window-ms burst-cfg) 60000)
-        threshold   (or (:threshold burst-cfg) 30)
+  (let [window-ms   (or (:window-ms burst-cfg) (:window-ms defaults))
+        threshold   (or (:threshold burst-cfg) (:threshold defaults))
         prior-hits  (filterv #(>= % (- now window-ms)) (or (:hits st) []))
         hits        (conj prior-hits now)
         detected?   (boolean (:detected? st))
@@ -94,7 +109,7 @@
                            total " requests in " duration-ms "ms")))
 
 (defn record-unauthenticated!
-  "Count a 401 against `client`. On crossing threshold, log
+  "Count a 401/403 against `client`. On crossing threshold, log
    :server/burst-detected once and optionally enqueue attention."
   [burst-cfg cfg client uri]
   (when (and burst-cfg (not (str/blank? client)))
@@ -106,11 +121,11 @@
         (log/warn :server/burst-detected
                   :client    client
                   :count     (:window-count next)
-                  :window-ms (or (:window-ms burst-cfg) 60000))
+                  :window-ms (or (:window-ms burst-cfg) (:window-ms defaults)))
         (when (notify? burst-cfg)
           (notify-detected! cfg client
                             (:window-count next)
-                            (or (:window-ms burst-cfg) 60000)
+                            (or (:window-ms burst-cfg) (:window-ms defaults))
                             (:paths next)))))))
 
 (defn sweep-ended!
@@ -119,7 +134,7 @@
   [burst-cfg cfg]
   (when burst-cfg
     (let [now         (now-ms)
-          cooldown-ms (or (:cooldown-ms burst-cfg) 600000)
+          cooldown-ms (or (:cooldown-ms burst-cfg) (:cooldown-ms defaults))
           snapshot    @state*
           quiet?      (fn [st]
                         (>= (- now (or (:last-ms st) 0)) cooldown-ms))
