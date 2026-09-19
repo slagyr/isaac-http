@@ -4,7 +4,8 @@
     [isaac.config.loader :as loader]
     [isaac.http.component.runtime :as runtime]
     [isaac.logger :as log]
-    [isaac.runner :as runner]))
+    [isaac.runner :as runner]
+    [isaac.schema.registered-in :as registered-in]))
 
 (defn running? []
   (runner/running?))
@@ -19,7 +20,8 @@
 (defn- contributed-comm-types [config]
   (->> (:module-index config)
        vals
-       (mapcat #(keys (get-in % [:manifest :isaac.http/comm])))
+       (mapcat #(keys (or (get-in % [:manifest :isaac.server/comm])
+                             (get-in % [:manifest :isaac.http/comm]))))
        (map (comp name keyword))
        set))
 
@@ -43,7 +45,9 @@
                  (:module-index config) (assoc :module-index (:module-index config)))]
     (cond
       (seq errors) (log-config-errors! errors)
-      (runtime/valid-start? config opts*) (runner/start! opts*))))
+      (runtime/valid-start? config opts*)
+      (binding [registered-in/*module-index* (or (:module-index opts*) (:module-index config) {})]
+        (runner/start! opts*)))))
 
 (defn stop! []
   (runner/stop!))

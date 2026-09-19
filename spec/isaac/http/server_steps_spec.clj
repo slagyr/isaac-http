@@ -51,6 +51,26 @@
       (should= 7788 (get-in (:config @started) [:http :port]))
       (should= virtual-home (:root @started))))
 
+  (it "keeps unregistered comm :type errors so boot can fail"
+    (let [started      (atom nil)
+          virtual-home "/target/test-state"]
+      (g/assoc! :mem-fs (nexus/get :fs))
+      (g/assoc! :root virtual-home)
+      (fs/mkdirs (nexus/get :fs) (str virtual-home "/config"))
+      (fs/spit (nexus/get :fs) (str virtual-home "/config/isaac.edn")
+               (pr-str {:comms {:bigbird {:type :unknown-type}}}))
+      (with-redefs [app/start! (fn [opts]
+                                 (reset! started opts)
+                                 nil)
+                    app/stop!  (fn [] nil)]
+        (sut/server-running))
+      (let [errors (:config-errors @started)
+            hit    (some (fn [e]
+                           (and (re-find #"comms\.bigbird" (str (or (:path e) (:key e))))
+                                (re-find #"unknown" (str (:value e)))))
+                         errors)]
+        (should-not-be-nil hit))))
+
   (it "can skip binding a real port for reload-only scenarios"
     (let [started      (atom nil)
           virtual-home "/target/test-state"

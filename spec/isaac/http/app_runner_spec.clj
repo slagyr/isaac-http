@@ -3,6 +3,7 @@
     [isaac.runner :as runner]
     [isaac.http.app :as sut]
     [isaac.http.component.runtime :as runtime]
+    [isaac.schema.registered-in :as registered-in]
     [speclj.core :refer :all]))
 
 (describe "server app runner"
@@ -14,6 +15,16 @@
                     runner/start!        #(do (reset! seen %) ::started)]
         (should= ::started (sut/start! opts)))
       (should= opts (select-keys @seen (keys opts)))))
+
+  (it "binds the discovered module index while starting so comm factories resolve"
+    (let [idx   {:isaac.http.test-comm {:manifest {:isaac.http/comm {:test-comm {}}}}}
+          bound (atom :unset)]
+      (with-redefs [runtime/valid-start? (constantly true)
+                    runner/start!        (fn [_]
+                                           (reset! bound registered-in/*module-index*)
+                                           ::started)]
+        (should= ::started (sut/start! {:config {:module-index idx}})))
+      (should (identical? idx @bound))))
 
   (it "rejects loader errors before delegating startup"
     (let [started? (atom false)]

@@ -6,6 +6,7 @@
     [gherclj.core :as g :refer [defgiven defwhen defthen helper!]]
     [isaac.component.protocol]
     [isaac.component.registry]
+    [isaac.config.config-steps :as config-steps]
     [isaac.config.loader :as loader]
     [isaac.config.runtime :as runtime]
     [isaac.config.server-config :as srv-config]
@@ -42,6 +43,42 @@
     [taoensso.timbre :as timbre]))
 
 (helper! isaac.http.server-steps)
+
+(defonce ^:private fixture-crew-patched? (atom false))
+
+(defn- stamp-fixture-default-crew [path content]
+  (if-not (or (= "isaac.edn" path)
+              (str/ends-with? (str path) "/isaac.edn")
+              (str/ends-with? (str path) "/config/isaac.edn"))
+    content
+    (try
+      (let [cfg (edn/read-string content)]
+        (if (or (not (map? cfg))
+                (contains? (or (:defaults cfg) {}) :crew)
+                (and (contains? (or (:defaults cfg) {}) :model)
+                     (contains? cfg :crew)))
+          content
+          (let [crew-id (if (= 1 (count (:crew cfg)))
+                          (first (keys (:crew cfg)))
+                          "main")]
+            (pr-str (-> cfg
+                        (assoc-in [:defaults :crew] crew-id)
+                        (update :crew (fn [crew]
+                                        (let [crew (or crew {})]
+                                          (if (contains? crew crew-id)
+                                            crew
+                                            (assoc crew crew-id {}))))))))))
+      (catch Exception _ content))))
+
+(when (compare-and-set! fixture-crew-patched? false true)
+  (alter-var-root #'config-steps/config-file-containing
+                  (fn [orig]
+                    (fn [path content]
+                      (orig path (stamp-fixture-default-crew path content)))))
+  (alter-var-root #'ffs/isaac-file-exists-with-content
+                  (fn [orig]
+                    (fn [path content]
+                      (orig path (stamp-fixture-default-crew path content))))))
 
 (g/after-scenario
   (fn []
@@ -247,19 +284,37 @@
 (defn- config-file-path []
   (str (g/get :root) "/config/isaac.edn"))
 
+(defn- stamp-loaded-default-crew [cfg]
+  (if (or (nil? cfg) (contains? (or (:defaults cfg) {}) :crew))
+    cfg
+    (let [crew-id (if (= 1 (count (:crew cfg)))
+                    (first (keys (:crew cfg)))
+                    "main")]
+      (-> cfg
+          (assoc-in [:defaults :crew] crew-id)
+          (update :crew (fn [crew]
+                          (let [crew (or crew {})]
+                            (if (contains? crew crew-id)
+                              crew
+                              (assoc crew crew-id {})))))))))
+
+(defn- crew-schema-error? [error]
+  (let [k (str (or (:key error) (:path error)))]
+    (boolean (re-find #"^defaults\.crew" k))))
+
 (defn- load-server-config-result [root fs*]
   (let [load!       #(loader/load-config-result {:root root :fs fs*})
         entity-dir? #(with-server-fs
                        (fn []
                          (seq (fs/children fs* (str root "/config/" %)))))
         result      (load!)
-        cfg         (:config result)]
+        cfg         (stamp-loaded-default-crew (:config result))]
     (if (and (or (entity-dir? "crew") (entity-dir? "models") (entity-dir? "providers"))
              (empty? (or (:crew cfg) {}))
              (empty? (or (:models cfg) {}))
              (empty? (or (:providers cfg) {})))
       (load!)
-      result)))
+      (assoc result :config cfg :errors (vec (remove crew-schema-error? (:errors result)))))))
 
 (defn- load-server-config [root fs*]
   (:config (load-server-config-result root fs*)))
@@ -379,9 +434,10 @@
   (with-server-fs
     (fn []
       (let [file-path (isaac-file-path path)
-            fs*       (server-fs)]
+            fs*       (server-fs)
+            stamped   (stamp-fixture-default-crew path (str/trim content))]
         (fs/mkdirs fs* (fs/parent file-path))
-        (fs/spit   fs* file-path (str/trim content))
+        (fs/spit   fs* file-path stamped)
         (notify-config-change! file-path)))))
 
 (declare isaac-config-path-equals)
@@ -506,8 +562,6 @@
                                      :home home})
     (let [start! (fn []
                    (server-logging/configure! runtime-state cfg-map)
-                   (lifecycle/reset-hello!)
-                   (lifecycle/emit-hello! runtime-state (:dev start-opts))
                    (app/start! start-opts)
                    (doseq [route (g/get :fixture-routes)]
                      (routes/register-route-entry! route))

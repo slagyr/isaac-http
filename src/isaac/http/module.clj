@@ -14,7 +14,8 @@
   ([] (comm-kinds (module-loader/builtin-index)))
   ([module-index]
    (->> (vals module-index)
-        (mapcat #(get-in % [:manifest :isaac.http/comm]))
+        (mapcat #(or (get-in % [:manifest :isaac.server/comm])
+                       (get-in % [:manifest :isaac.http/comm])))
         (remove (fn [[_ v]] (false? (:configurable? v))))
         (map (fn [[k _]] (name k)))
         sort

@@ -55,7 +55,9 @@
   (it "rotate replaces the hash so the old secret no longer authenticates"
     (let [old "old-secret"]
       (mutate/set-config root "http.auth.principals.ci"
-                         {:hash (auth/sha256 old) :scopes #{:hail/send}})
+                         {:hash (auth/sha256 old) :scopes #{:hail/send}}
+                         :skip-ref-validation? true
+                         :skip-module-validation? true)
       (let [{:keys [secret exit]} (sut/rotate! root "ci" {})
             cfg (loader/load-config-result {:root root})
             principals (get-in cfg [:config :http :auth :principals])]
@@ -66,7 +68,9 @@
 
   (it "rotate --overlap keeps the old hash as name@prev until the window ends"
     (mutate/set-config root "http.auth.principals.ci"
-                       {:hash (auth/sha256 "old-secret") :scopes #{:hail/send}})
+                       {:hash (auth/sha256 "old-secret") :scopes #{:hail/send}}
+                       :skip-ref-validation? true
+                       :skip-module-validation? true)
     (let [{:keys [exit]} (sut/rotate! root "ci" {:overlap "24h"})
           cfg  (loader/load-config-result {:root root})
           twin (get-in cfg [:config :http :auth :principals :ci :previous])]
@@ -80,7 +84,9 @@
     (mutate/set-config root "http.auth.principals.ci"
                        {:hash (auth/sha256 "ci-secret")
                         :scopes #{:hail/send}
-                        :previous {:hash (auth/sha256 "older") :scopes #{:hail/send} :expires "2099-01-01"}})
+                        :previous {:hash (auth/sha256 "older") :scopes #{:hail/send} :expires "2099-01-01"}}
+                       :skip-ref-validation? true
+                       :skip-module-validation? true)
     (let [result (sut/revoke! root "ci")
           loaded (loader/load-config-result {:root root})]
       (should= 0 (:exit result))
@@ -93,9 +99,13 @@
 
   (it "list rows name scopes expiry and never, without hash or secret"
     (mutate/set-config root "http.auth.principals.ci"
-                       {:hash (auth/sha256 "ci-secret") :scopes #{:hail/send} :expires "2027-01-31"})
+                       {:hash (auth/sha256 "ci-secret") :scopes #{:hail/send} :expires "2027-01-31"}
+                       :skip-ref-validation? true
+                       :skip-module-validation? true)
     (mutate/set-config root "http.auth.principals.admin"
-                       {:hash (auth/sha256 "root-secret") :scopes #{:*}})
+                       {:hash (auth/sha256 "root-secret") :scopes #{:*} }
+                       :skip-ref-validation? true
+                       :skip-module-validation? true)
     (let [rows (sut/list-rows (loader/load-config-result {:root root}))]
       (should= [{:name "admin" :scopes "*" :expires "-" :last-used "never"}
                 {:name "ci" :scopes "hail/send" :expires "2027-01-31" :last-used "never"}]
