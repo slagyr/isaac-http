@@ -560,6 +560,7 @@
         run-server?    (not (false? (g/get :bind-server-port?)))
         start-opts     {:config               cfg-map
                          :config-errors        (:errors load-result)
+                         :config-warnings      (:warnings load-result)
                          :module-index          (:module-index cfg-map)
                          ;; Acceptance requests inspect queued attention before
                          ;; delivery. Do not let the background worker race the

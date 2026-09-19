@@ -36,6 +36,18 @@
                                         :value "unknown :type \"unknown-type\""}]})))
       (should-not @started?)))
 
+  (it "passes config warnings into valid-start? so a dropped :http :auth is visible"
+    (let [seen (atom nil)]
+      (with-redefs [runtime/valid-start? (fn [_config opts]
+                                           (reset! seen opts)
+                                           false)
+                    runner/start!        (constantly ::started)]
+        (should-be-nil
+          (sut/start! {:config          {:http {:host "0.0.0.0"}}
+                       :config-warnings [{:key "http.auth.token" :value "unknown key"}]})))
+      (should= [{:key "http.auth.token" :value "unknown key"}]
+               (:config-warnings @seen))))
+
   (it "ignores pre-discovery comm errors after the discovered module validates the comm type"
     (let [started (atom nil)
           config  {:module-index {:isaac.http.test-comm

@@ -41,7 +41,8 @@
         errors (unresolved-errors config (:config-errors opts))
         opts*  (cond-> (-> opts
                            (dissoc :config-errors)
-                           (assoc :config config))
+                           (assoc :config config)
+                           (assoc :config-warnings (or (:config-warnings opts) [])))
                  (:module-index config) (assoc :module-index (:module-index config)))]
     (cond
       (seq errors) (log-config-errors! errors)

@@ -1,13 +1,14 @@
 (ns isaac.http.component.runtime
   (:require
+    [clojure.string :as str]
     [isaac.component.factory :as component-factory]
     [isaac.component.protocol :as component]
     [isaac.component.registry :as component-registry]
     [isaac.config.loader :as loader]
     [isaac.config.runtime :as runtime]
     [isaac.fs :as fs]
-    [isaac.logger :as log]
-    [isaac.http.http :as http]))
+    [isaac.http.http :as http]
+    [isaac.logger :as log]))
 
 (def ^:private optional-registry-syms
   '[isaac.hail.bands/registry
@@ -81,17 +82,36 @@
           .-running*
           deref))
 
+(defn- http-auth-dropped? [warnings]
+  (some (fn [{:keys [key value]}]
+          (and (string? key)
+               (str/starts-with? key "http.auth")
+               (= "unknown key" value)))
+        warnings))
+
 (defn valid-start? [config opts]
   (let [host          (or (:host opts) (get-in config [:http :host]) "127.0.0.1")
         start-http?   (not (false? (:start-http-server? opts)))
-        auth-token    (get-in config [:http :auth :token])]
-    (or (not start-http?)
-             (http/loopback-host? host)
-             (when (seq auth-token) true)
-             (do (log/error :server/auth-required
-                                     :host host
-                                     :message "missing :http :auth :token for non-loopback bind")
-                 false))))
+        auth-token    (get-in config [:http :auth :token])
+        dropped?      (http-auth-dropped? (:config-warnings opts))]
+    (cond
+      dropped?
+      (do (log/error :auth/config-dropped
+                     :host host
+                     :message "refusing to start: :http :auth was dropped as an unknown key")
+          false)
+
+      (not start-http?)
+      true
+
+      (or (http/loopback-host? host) (seq auth-token))
+      true
+
+      :else
+      (do (log/error :server/auth-required
+                     :host host
+                     :message "missing :http :auth :token for non-loopback bind")
+          false))))
 
 (defmethod component-factory/create :server-runtime
   [_ {:keys [config module-index opts root]}]
