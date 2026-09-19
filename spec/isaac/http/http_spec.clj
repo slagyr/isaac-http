@@ -2,6 +2,7 @@
   (:require
     [isaac.http.auth]
     [isaac.http.http :as sut]
+    [isaac.http.oidc]
     [isaac.logger :as log]
     [isaac.spec-helper :as helper]
     [speclj.core :refer :all]))
@@ -54,6 +55,30 @@
               response (handler {:request-method :get :uri "/status"
                                  :headers {"x-identity" "signed"}})]
           (should= 200 (:status response)))))
+
+    (it "tries JWT identity before bearer-hash and accepts an OIDC principal"
+      (let [rule {:issuer "https://accounts.lantern.test"
+                  :principal {:name :google-pubsub :scopes #{:*}}}]
+        (with-redefs [isaac.http.auth/identity-verifiers (constantly [rule])
+                      isaac.http.oidc/jwt-shaped? (constantly true)
+                      isaac.http.oidc/verify (fn [_token _rule _opts]
+                                               {:name :google-pubsub :scopes #{:*} :oidc? true})]
+          (let [handler  (sut/create-handler)
+                response (handler {:request-method :get :uri "/status"
+                                   :headers {"authorization" "Bearer eyJ.payload.sig"}})]
+            (should= 200 (:status response))
+            (should= :google-pubsub (get-in response [:isaac/principal :name]))))))
+
+    (it "refuses a JWT that fails signature with 401 :reason :signature"
+      (let [rule {:issuer "https://accounts.lantern.test"
+                  :principal {:name :google-pubsub :scopes #{:*}}}]
+        (with-redefs [isaac.http.auth/identity-verifiers (constantly [rule])
+                      isaac.http.oidc/jwt-shaped? (constantly true)
+                      isaac.http.oidc/verify (fn [_token _rule _opts] {:reason :signature})]
+          (let [handler  (sut/create-handler {:cfg {:http {:auth {:principals {}}}}})
+                response (handler {:request-method :get :uri "/status"
+                                   :headers {"authorization" "Bearer eyJ.payload.sig"}})]
+            (should= 401 (:status response))))))
 
     (it "maps a handler scope refusal to 403"
       (let [handler  (sut/create-handler

@@ -12,6 +12,7 @@
 (defonce ^:private last-write-at* (atom {}))
 (defonce ^:private expiry-flagged* (atom {}))
 (defonce ^:private last-used-write-count* (atom 0))
+(defonce ^:private jwks-flagged* (atom {}))
 
 (defn reset-state!
   "Test hook."
@@ -19,7 +20,8 @@
   (reset! seen-hashes* {})
   (reset! last-write-at* {})
   (reset! expiry-flagged* {})
-  (reset! last-used-write-count* 0))
+  (reset! last-used-write-count* 0)
+  (reset! jwks-flagged* {}))
 
 (defn last-used-write-count []
   @last-used-write-count*)
@@ -78,6 +80,9 @@
         (>= (- (.toEpochMilli n) (.toEpochMilli ^Instant prev)) 60000))))
 
 (defn record-use! [cfg root principal]
+  (when (:oidc? principal)
+    ;; a verified JWT means the issuer's JWKS is reachable again: re-arm the outage alert
+    (reset! jwks-flagged* {}))
   (when (and (seq (str root)) (principal-name principal))
     (let [pname  (principal-name principal)
           kw     (keyword pname)
@@ -89,6 +94,9 @@
       (when (and first? (not (:legacy? principal)) (alert-on? cfg :first-use))
         (burst/enqueue-attention! cfg (str "first use of principal " pname))))))
 
+(defn- jwks-health-threshold [cfg]
+  (or (get-in cfg [:http :oidc :jwks-alert-threshold]) 1))
+
 (defn note-refusal! [cfg principal reason remembered]
   (let [pname (or (principal-name principal) remembered)]
     (case reason
@@ -96,6 +104,12 @@
                  (burst/enqueue-attention! cfg (str "expired secret used for principal " pname)))
       :revoked (when (and pname (alert-on? cfg :revoked))
                  (burst/enqueue-attention! cfg (str "revoked secret used for principal " pname)))
+      :jwks-unavailable
+      (let [n (swap! jwks-flagged* update :count (fnil inc 0))]
+        (when (>= (:count n) (jwks-health-threshold cfg))
+          (when (not (:posted? n))
+            (swap! jwks-flagged* assoc :posted? true)
+            (burst/enqueue-attention! cfg "JWKS unreachable — OIDC identities fail closed"))))
       nil)))
 
 (defn sweep-expiring! [cfg]

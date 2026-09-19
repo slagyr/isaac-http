@@ -37,8 +37,35 @@
              verifier))
     id))
 
+(defn register-identity-entry!
+  "Per-entry factory for :isaac.http/identity. A MapEntry `[id rule]` is a
+   data-shaped OIDC trust rule. A symbol (legacy) is a code verifier."
+  [entry]
+  (cond
+    (or (instance? clojure.lang.MapEntry entry)
+        (and (sequential? entry) (= 2 (count entry)) (not (map? entry))))
+    (let [[id rule] entry]
+      (register-identity-verifier!
+        (with-meta (assoc (or rule {}) :id id) {:name id})))
+
+    (symbol? entry)
+    (register-identity-verifier! entry)
+
+    (fn? entry)
+    (register-identity-verifier! entry)
+
+    (map? entry)
+    (register-identity-verifier!
+      (with-meta entry {:name (or (:id entry) (:issuer entry) entry)}))
+
+    :else
+    (register-identity-verifier! entry)))
+
 (defn identity-verifiers []
   (vals @*identity-verifiers*))
+
+(defn identity-rules []
+  (filter map? (identity-verifiers)))
 
 (defn- overlap-name [name]
   (keyword (str (clojure.core/name name) "@prev")))

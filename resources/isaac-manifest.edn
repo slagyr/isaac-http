@@ -1,12 +1,19 @@
 {:id        :isaac.http
- :version   "0.1.18"
+ :version   "0.1.19"
  :builtin?  true
  :factory   isaac.http.module/create-module
 
- :berths    {:isaac.http/identity {:description "Inbound request identity verifiers. Each contribution is a function symbol resolving (fn [request] -> {:name ... :scopes #{...}} | nil)."
-                                      :schema {:type :seq
-                                               :spec {:type :symbol
-                                                      :factory isaac.http.auth/register-identity-verifier!}}}
+ :berths    {:isaac.http/identity {:description "Inbound request identity. Map contributions are data-shaped OIDC trust rules ({:issuer :jwks :audience :claims :principal}); a symbol contribution is a code verifier (fn [request] -> {:name ... :scopes #{...}} | nil)."
+                                      :schema {:type :map
+                                               :key-spec {:type :keyword}
+                                               :value-spec {:type :map
+                                                            :factory isaac.http.auth/register-identity-entry!
+                                                            :schema {:issuer {:type :string}
+                                                                     :jwks {:type :string}
+                                                                     :audience {:type :string}
+                                                                     :claims {:type :any}
+                                                                     :principal {:type :any}
+                                                                     :factory {:type :symbol}}}}}
               :isaac.http/route {:description "HTTP routes. :path is a clout pattern (literal segments, :name params, * wildcards). :method is :get/:post/... or :* for any-method. Prefix matching is just a trailing wildcard in the path."
                                   :schema      {:type :seq
                                                 :spec {:type    :map
@@ -63,6 +70,10 @@
                                                                                      :expired   {:type :boolean}
                                                                                      :revoked   {:type :boolean}
                                                                                      :expiring  {:type :boolean}}}}}
+                                  :oidc       {:type        :map
+                                               :description "Generic OIDC/JWT verification knobs. Trust rules live on contributing modules."
+                                               :schema      {:skew-s {:type :int :default 60 :coercions [[:default 60]] :description "Clock skew in seconds for exp/nbf/iat"}
+                                                             :jwks-cache-s {:type :int :default 3600 :coercions [[:default 3600]] :description "JWKS cache TTL in seconds"}}}
                                   :burst      {:type        :map
                                                :description "Unauthenticated burst control. On by default; :enabled false turns it off."
                                                :default     {:enabled true :threshold 10 :window-ms 60000 :cooldown-ms 600000 :throttle? true :notify? true}

@@ -35,6 +35,7 @@
     [isaac.http.burst :as burst]
     [isaac.http.auth :as auth]
     [isaac.http.http :as server-http]
+    [isaac.http.oidc-fixture :as oidc-fixture]
     [isaac.http.routes :as routes]
     [isaac.step-tables :as match]
     [isaac.tool.names :as names]
@@ -378,6 +379,24 @@
                        (cond-> {:hash (auth/sha256 secret) :scopes (parse-scopes scopes)}
                          expires (assoc :expires expires)))))
 
+(defn oidc-trust-rule-registered []
+  (oidc-fixture/register-trust-rule!))
+
+(defn jwks-stub-serves-issuer-key []
+  (oidc-fixture/stub-jwks-serves!))
+
+(defn jwks-stub-is-unreachable []
+  (oidc-fixture/stub-jwks-unreachable!))
+
+(defn jwks-stub-misses-then-serves []
+  (oidc-fixture/stub-jwks-miss-then-serve!))
+
+(defn signed-jwt-bearer [kind]
+  (oidc-fixture/signed-token kind))
+
+(defn jwks-fetch-count-is [n]
+  (g/should= (long n) (long (oidc-fixture/jwks-hit-count))))
+
 (defn principal-removed [principal-name]
   (with-server-fs
     (fn []
@@ -510,6 +529,8 @@
 
 (g/before-scenario
   (fn []
+    (reset! auth/*identity-verifiers* {})
+    (oidc-fixture/reset-fixture!)
     (when-not (g/get :root)
       (let [home (default-server-home)]
         (clean-real-dir! home)
@@ -782,6 +803,9 @@
         [name value] (str/split header #":\s*" 2)]
     (send-http :get path {name value})))
 
+(defn client-sends-signed-jwt [path]
+  (get-request-with-header path (str "Authorization: Bearer " (oidc-fixture/last-token))))
+
 (defn- as-count [n]
   (if (number? n) (long n) (parse-long (str n))))
 
@@ -1020,6 +1044,28 @@
 ;; endregion ^^^^^ Log Assertions ^^^^^
 
 ;; region ----- Routing -----
+
+(defgiven "an OIDC trust rule for google-pubsub is registered"
+  isaac.http.server-steps/oidc-trust-rule-registered
+  "Registers a data-shaped :isaac.http/identity rule for the lantern fixture issuer.")
+
+(defgiven "the JWKS stub serves the issuer key"
+  isaac.http.server-steps/jwks-stub-serves-issuer-key)
+
+(defgiven "the JWKS stub is unreachable"
+  isaac.http.server-steps/jwks-stub-is-unreachable)
+
+(defgiven "the JWKS stub misses the kid then serves it"
+  isaac.http.server-steps/jwks-stub-misses-then-serves)
+
+(defgiven "a signed JWT bearer of kind {kind:string}"
+  isaac.http.server-steps/signed-jwt-bearer)
+
+(defwhen "the client sends GET {path:string} with the signed JWT"
+  isaac.http.server-steps/client-sends-signed-jwt)
+
+(defthen "the JWKS stub was fetched {n:int} times"
+  isaac.http.server-steps/jwks-fetch-count-is)
 
 (defgiven #"principal \"([^\"]+)\" is configured with secret \"([^\"]+)\" and scopes \"([^\"]+)\"$"
   isaac.http.server-steps/principal-configured)

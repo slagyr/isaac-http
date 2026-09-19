@@ -42,6 +42,15 @@
       (should= [{:name :fixture :scopes #{:fixture}}]
                (mapv #(% {}) (sut/identity-verifiers)))))
 
+  (it "registers a data-shaped identity rule as an OIDC verifier"
+    (binding [sut/*identity-verifiers* (atom {})]
+      (sut/register-identity-entry! [:google-pubsub {:issuer "https://accounts.lantern.test"
+                                                     :jwks "https://accounts.lantern.test/certs"
+                                                     :audience "projects/harbor/topics/push"
+                                                     :principal {:name :google-pubsub :scopes #{:google/push}}}])
+      (let [fn-or-rule (first (sut/identity-verifiers))]
+        (should (or (fn? fn-or-rule) (map? fn-or-rule))))))
+
   (it "rejects malformed expiration dates safely"
     (should (sut/expired? "not-a-date")))
 

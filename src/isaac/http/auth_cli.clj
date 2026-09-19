@@ -133,14 +133,24 @@
    :expires   (format-expires (:expires principal))
    :last-used (last-used-for last-used (clojure.core/name name))})
 
+(defn- oidc-row [rule last-used]
+  (let [principal (:principal rule)
+        n         (clojure.core/name (or (:name principal) (:id rule) :oidc))]
+    {:name      (str n " (oidc)")
+     :scopes    (format-scopes (:scopes principal))
+     :expires   (str (or (:issuer rule) "-") " " (or (:audience rule) "-"))
+     :last-used (last-used-for last-used n)}))
+
 (defn list-rows [load-result]
   (let [principals (get-in load-result [:config :http :auth :principals] {})
         root       (or (get-in load-result [:config :root]) "")
-        last-used  (try (audit/read-last-used root) (catch Exception _ {}))]
+        last-used  (try (audit/read-last-used root) (catch Exception _ {}))
+        oidc-rows  (map #(oidc-row % last-used) (auth/identity-rules))]
     (->> principals
          (mapcat (fn [[name principal]]
                    (cond-> [(row name principal last-used)]
                      (get principal :previous)
                      (conj (row (str (clojure.core/name name) "@prev") (get principal :previous) last-used)))))
+         (concat oidc-rows)
          (sort-by :name)
          vec)))

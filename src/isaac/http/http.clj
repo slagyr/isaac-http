@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [isaac.http.audit :as audit]
     [isaac.http.auth :as auth]
+    [isaac.http.oidc :as oidc]
     [isaac.logger :as log]
     [isaac.http.burst :as burst]
     [isaac.http.routes :as routes]
@@ -44,8 +45,22 @@
               (= 401 status) (assoc "WWW-Authenticate" "Bearer"))
    :body (if (= 401 status) "Unauthorized" "Forbidden")})
 
+(defn- code-verifiers []
+  (filter fn? (auth/identity-verifiers)))
+
+(defn- oidc-rules []
+  (filter map? (auth/identity-verifiers)))
+
+(defn- oidc-identity [cfg bearer]
+  (when (and (seq bearer) (oidc/jwt-shaped? bearer) (seq (oidc-rules)))
+    (let [opts     {:http (:http cfg)}
+          hits     (keep (fn [rule] (oidc/verify bearer rule opts)) (oidc-rules))
+          accepted (first (remove :reason hits))
+          refused  (remove #(= :issuer (:reason %)) (filter :reason hits))]
+      (or accepted (first refused)))))
+
 (defn- verified-identity [request]
-  (some #(% request) (auth/identity-verifiers)))
+  (some #(% request) (code-verifiers)))
 
 (defn- invoke-handler [handler request]
   (try
@@ -62,7 +77,10 @@
             auth-cfg   (get-in cfg [:http :auth])
             principals (auth/principals cfg)
             bearer     (bearer-token request)
-            principal  (or (auth/authenticate cfg bearer) (verified-identity request))
+            oidc-hit   (oidc-identity cfg bearer)
+            principal  (or (when (and oidc-hit (not (:reason oidc-hit))) oidc-hit)
+                           (auth/authenticate cfg bearer)
+                           (verified-identity request))
             scope      (routes/required-scope request)
             auth-on?   (or (contains? auth-cfg :principals)
                            (seq principals)
@@ -71,11 +89,12 @@
                         (audit/remembered-name (auth/sha256 bearer)))
             reason     (when auth-on?
                          (cond
+                           (and oidc-hit (:reason oidc-hit) (nil? principal)) (:reason oidc-hit)
                            (and principal (auth/expired? (:expires principal))) :expired
                            (and (nil? principal) remembered) :revoked
                            (nil? principal) :unknown
                            (not (auth/authorized? principal scope)) :scope))
-            status     (case reason :scope 403 (:unknown :expired :revoked) 401 nil)]
+            status     (when reason (if (= :scope reason) 403 401))]
         (when (and (some :legacy? (vals principals)) (not= auth-cfg @warned-auth*))
           (reset! warned-auth* auth-cfg)
           (log/warn :auth/legacy-token))
