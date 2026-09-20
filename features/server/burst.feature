@@ -86,6 +86,60 @@ Feature: Unauthenticated burst control
       | level | event                   | client      |
       | :info | :server/burst-throttled | 203.0.113.9 |
 
+  @wip
+  Scenario: the ended post counts throttled requests, not just the ones that reached auth
+    Given config:
+      | key                  | value |
+      | http.burst.throttle? | true  |
+    And the Isaac server is started
+    And the clock is fixed at "2026-03-01T10:00:00Z"
+    When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 30 times
+    And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 20 times
+    And the clock is fixed at "2026-03-01T10:10:01Z"
+    And the client sends GET "/status" with header "Authorization: Bearer s3cr3t" 1 times
+    Then the log has entries matching:
+      | level | event               | client      | total | throttled |
+      | :info | :server/burst-ended | 203.0.113.9 | 30    | 20        |
+    And the only file in "comm/delivery/pending" EDN contains:
+      | path    | value                                        |
+      | content | contains "30 refused" and "20 throttled"     |
+
+  @wip
+  Scenario: throttled traffic keeps the burst alive
+    Given config:
+      | key                  | value |
+      | http.burst.throttle? | true  |
+    And the Isaac server is started
+    And the clock is fixed at "2026-03-01T10:00:00Z"
+    When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 30 times
+    And the clock is fixed at "2026-03-01T10:09:00Z"
+    And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 5 times
+    And the clock is fixed at "2026-03-01T10:10:01Z"
+    And the client sends GET "/status" with header "Authorization: Bearer s3cr3t" 1 times
+    Then the log has no entries matching:
+      | event               |
+      | :server/burst-ended |
+    When the clock is fixed at "2026-03-01T10:19:01Z"
+    And the client sends GET "/status" with header "Authorization: Bearer s3cr3t" 1 times
+    Then the log has entries matching:
+      | level | event               | client      |
+      | :info | :server/burst-ended | 203.0.113.9 |
+
+  @wip
+  Scenario: the ended post reports the burst's own span, not the wait for the sweep
+    Given the clock is fixed at "2026-03-01T10:00:00Z"
+    When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 30 times
+    And the clock is fixed at "2026-03-01T10:00:30Z"
+    And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 15 times
+    And the clock is fixed at "2026-03-01T10:10:31Z"
+    And the client sends GET "/status" with header "Authorization: Bearer s3cr3t" 1 times
+    Then the only file in "comm/delivery/pending" EDN contains:
+      | path    | value                 |
+      | content | contains "30000ms"    |
+    And the log has entries matching:
+      | level | event               | client      | duration-ms |
+      | :info | :server/burst-ended | 203.0.113.9 | 30000       |
+
   Scenario: loopback is never throttled
     Given config:
       | key                    | value |
