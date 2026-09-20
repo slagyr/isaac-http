@@ -86,7 +86,6 @@ Feature: Unauthenticated burst control
       | level | event                   | client      |
       | :info | :server/burst-throttled | 203.0.113.9 |
 
-  @wip
   Scenario: the ended post counts throttled requests, not just the ones that reached auth
     Given config:
       | key                  | value |
@@ -104,7 +103,6 @@ Feature: Unauthenticated burst control
       | path    | value                                        |
       | content | contains "30 refused" and "20 throttled"     |
 
-  @wip
   Scenario: throttled traffic keeps the burst alive
     Given config:
       | key                  | value |
@@ -125,7 +123,6 @@ Feature: Unauthenticated burst control
       | level | event               | client      |
       | :info | :server/burst-ended | 203.0.113.9 |
 
-  @wip
   Scenario: the ended post reports the burst's own span, not the wait for the sweep
     Given the clock is fixed at "2026-03-01T10:00:00Z"
     When the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 30 times

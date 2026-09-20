@@ -123,7 +123,9 @@
           (burst/sweep-ended! burst-cfg cfg)
           (let [client (client-address request)]
             (if (burst/throttle-client? burst-cfg client)
-              (burst/throttled-response! burst-cfg client)
+              (do
+                (burst/record-throttled! burst-cfg client (:uri request))
+                (burst/throttled-response! burst-cfg client))
               (let [response (handler request)]
                 (when (contains? #{401 403} (:status response))
                   (burst/record-unauthenticated! burst-cfg cfg client (:uri request)))

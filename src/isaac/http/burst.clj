@@ -103,10 +103,11 @@
                        count " requests in " window-ms "ms" path-part)]
     (enqueue-attention! cfg content)))
 
-(defn- notify-ended! [cfg client total duration-ms]
+(defn- notify-ended! [cfg client total throttled duration-ms]
   (enqueue-attention! cfg
                       (str "Unauthenticated burst from " client " ended: "
-                           total " requests in " duration-ms "ms")))
+                           total " refused, " throttled " throttled over "
+                           duration-ms "ms")))
 
 (defn record-unauthenticated!
   "Count a 401/403 against `client`. On crossing threshold, log
@@ -128,6 +129,25 @@
                             (or (:window-ms burst-cfg) (:window-ms defaults))
                             (:paths next)))))))
 
+(defn record-throttled!
+  "Count a request answered with a bare 429 against `client`. Throttled hits
+   never feed detection (the threshold keeps its meaning) but they do refresh
+   the cooldown clock and the burst's span — a client blocked without pause is
+   still bursting."
+  [burst-cfg client uri]
+  (when (and burst-cfg (not (str/blank? client)))
+    (let [now (now-ms)]
+      (swap! state* update client
+             (fn [st]
+               (-> st
+                   (assoc :last-ms now)
+                   (update :throttled (fnil inc 0)))))
+      (log/debug :server/burst-throttled-request
+                 :client client :uri uri :status 429))))
+
+(defn- burst-span-ms [st]
+  (max 0 (- (or (:last-ms st) 0) (or (:first-ms st) 0))))
+
 (defn sweep-ended!
   "Emit :server/burst-ended (and a closing attention post) for any client
    whose last unauthenticated hit is older than cooldown-ms."
@@ -144,9 +164,16 @@
       (when (seq drop-keys)
         (swap! state* (fn [m] (apply dissoc m drop-keys))))
       (doseq [[client st] ended]
-        (log/info :server/burst-ended :client client :total (:total st))
-        (when (notify? burst-cfg)
-          (notify-ended! cfg client (:total st) (- now (or (:first-ms st) now))))))))
+        (let [total       (or (:total st) 0)
+              throttled   (or (:throttled st) 0)
+              duration-ms (burst-span-ms st)]
+          (log/info :server/burst-ended
+                    :client      client
+                    :total       total
+                    :throttled   throttled
+                    :duration-ms duration-ms)
+          (when (notify? burst-cfg)
+            (notify-ended! cfg client total throttled duration-ms)))))))
 
 (defn throttle-client?
   [burst-cfg client]

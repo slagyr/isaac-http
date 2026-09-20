@@ -39,6 +39,20 @@
 (defn- events [name]
   (filter #(= name (:event %)) @log/captured-logs))
 
+(defn- instant [s] (java.time.Instant/parse s))
+
+(def ^:private posts* (atom []))
+
+(defn- notifying-handler [burst-cfg]
+  (reset! posts* [])
+  (http/create-handler {:cfg {:http      {:auth  {:token token}
+                                          :burst (assoc burst-cfg :notify? true)}
+                             :attention {:notify {:comm :discord :target "ops"}}}}))
+
+(defn- with-posts [f]
+  (with-redefs [burst/delivery-enqueue-fn (constantly (fn [m] (swap! posts* conj m)))]
+    (f)))
+
 (describe "unauthenticated burst control"
 
   (helper/with-captured-logs)
@@ -102,6 +116,73 @@
         (should= 1 (count throttled))
         (should= :info (:level (first throttled)))
         (should= "203.0.113.9" (:client (first throttled))))))
+
+  (it "counts throttled requests apart from the ones that reached auth"
+    (let [handler (handler-for (assoc burst-on :throttle? true))]
+      (binding [log-file/*now* (instant "2026-03-01T10:00:00Z")]
+        (dotimes [_ 30] (unauth handler "203.0.113.9"))
+        (dotimes [_ 20] (unauth handler "203.0.113.9")))
+      (binding [log-file/*now* (instant "2026-03-01T10:10:01Z")]
+        (authed handler))
+      (let [ended (first (events :server/burst-ended))]
+        (should= 30 (:total ended))
+        (should= 20 (:throttled ended)))))
+
+  (it "keeps the burst alive while throttled traffic continues"
+    (let [handler (handler-for (assoc burst-on :throttle? true))]
+      (binding [log-file/*now* (instant "2026-03-01T10:00:00Z")]
+        (dotimes [_ 30] (unauth handler "203.0.113.9")))
+      (binding [log-file/*now* (instant "2026-03-01T10:09:00Z")]
+        (dotimes [_ 5] (unauth handler "203.0.113.9")))
+      (binding [log-file/*now* (instant "2026-03-01T10:10:01Z")]
+        (authed handler))
+      (should= 0 (count (events :server/burst-ended)))
+      (binding [log-file/*now* (instant "2026-03-01T10:19:01Z")]
+        (authed handler))
+      (let [ended (first (events :server/burst-ended))]
+        (should= 1 (count (events :server/burst-ended)))
+        (should= 30 (:total ended))
+        (should= 5 (:throttled ended)))))
+
+  (it "reports the span from the first hit to the last, not the wait for the sweep"
+    (let [handler (handler-for burst-on)]
+      (binding [log-file/*now* (instant "2026-03-01T10:00:00Z")]
+        (dotimes [_ 30] (unauth handler "203.0.113.9")))
+      (binding [log-file/*now* (instant "2026-03-01T10:00:30Z")]
+        (dotimes [_ 15] (unauth handler "203.0.113.9")))
+      (binding [log-file/*now* (instant "2026-03-01T10:10:31Z")]
+        (authed handler))
+      (let [ended (first (events :server/burst-ended))]
+        (should= 45 (:total ended))
+        (should= 0 (:throttled ended))
+        (should= 30000 (:duration-ms ended)))))
+
+  (it "posts refused, throttled and the span when the burst ends"
+    (with-posts
+      (fn []
+        (let [handler (notifying-handler (assoc burst-on :throttle? true))]
+          (binding [log-file/*now* (instant "2026-03-01T10:00:00Z")]
+            (dotimes [_ 30] (unauth handler "203.0.113.9")))
+          (binding [log-file/*now* (instant "2026-03-01T10:00:30Z")]
+            (dotimes [_ 20] (unauth handler "203.0.113.9")))
+          (binding [log-file/*now* (instant "2026-03-01T10:10:31Z")]
+            (authed handler))
+          (let [content (:content (last @posts*))]
+            (should-contain "203.0.113.9" content)
+            (should-contain "30 refused" content)
+            (should-contain "20 throttled" content)
+            (should-contain "30000ms" content))))))
+
+  (it "logs every throttled request with its uri"
+    (let [handler (handler-for (assoc burst-on :throttle? true))]
+      (dotimes [_ 30] (unauth handler "203.0.113.9"))
+      (unauth handler "203.0.113.9" "/.env")
+      (unauth handler "203.0.113.9" "/wp-login.php")
+      (let [blocked (events :server/burst-throttled-request)]
+        (should= 2 (count blocked))
+        (should= ["/.env" "/wp-login.php"] (mapv :uri blocked))
+        (should= "203.0.113.9" (:client (first blocked)))
+        (should= 429 (:status (first blocked))))))
 
   (it "never throttles loopback clients"
     (let [handler (handler-for (assoc burst-on :throttle? true))
