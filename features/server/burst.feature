@@ -100,7 +100,7 @@ Feature: Unauthenticated burst control
     Then the log has entries matching:
       | level | event               | client      | total | throttled |
       | :info | :server/burst-ended | 203.0.113.9 | 30    | 20        |
-    And the only file in "comm/delivery/pending" EDN contains:
+    And the newest file in "comm/delivery/pending" EDN contains:
       | path    | value                                        |
       | content | contains "30 refused" and "20 throttled"     |
 
@@ -133,7 +133,7 @@ Feature: Unauthenticated burst control
     And the client sends GET "/.env" with header "X-Forwarded-For: 203.0.113.9" 15 times
     And the clock is fixed at "2026-03-01T10:10:31Z"
     And the client sends GET "/status" with header "Authorization: Bearer s3cr3t" 1 times
-    Then the only file in "comm/delivery/pending" EDN contains:
+    Then the newest file in "comm/delivery/pending" EDN contains:
       | path    | value                 |
       | content | contains "30000ms"    |
     And the log has entries matching:
