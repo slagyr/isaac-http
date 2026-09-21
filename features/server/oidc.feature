@@ -129,3 +129,91 @@ Feature: OIDC/JWT identity (isaac-4sqh)
     And the log has entries matching:
       | event         | reason   |
       | :auth/refused | :unknown |
+
+  # --- isaac-q1iu: trust rules from config (http.auth.identity) ----------------
+  # Trusting an issuer is configuration, not a module change. The same
+  # data-shaped rule a manifest may contribute can be declared under
+  # http.auth.identity and hot-reloads like the principals beside it.
+
+  @wip
+  Scenario: a trust rule declared in config is accepted as its principal (isaac-q1iu)
+    Given config:
+      | http.auth.identity.lantern-ci.issuer                 | https://accounts.lantern.test       |
+      | http.auth.identity.lantern-ci.jwks                   | https://accounts.lantern.test/certs |
+      | http.auth.identity.lantern-ci.audience               | projects/harbor/topics/push         |
+      | http.auth.identity.lantern-ci.claims.email           | pubsub@harbor.test                  |
+      | http.auth.identity.lantern-ci.claims.email_verified  | true                                |
+      | http.auth.identity.lantern-ci.principal.name         | lantern-ci                          |
+      | http.auth.identity.lantern-ci.principal.scopes       | #{:google/push}                     |
+    And no OIDC trust rule is registered by any module
+    And the JWKS stub serves the issuer key
+    And a signed JWT bearer of kind "valid"
+    And the Isaac server is started
+    When the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 200
+    And the log has entries matching:
+      | event         | principal  | uri             |
+      | :http/request | lantern-ci | /fixture/scoped |
+    When isaac is run with "http auth list"
+    Then the stdout matches:
+      | pattern                     |
+      | lantern-ci \(oidc\)         |
+      | accounts.lantern.test       |
+      | projects/harbor/topics/push |
+    And the stdout does not contain "sha256"
+
+  @wip
+  Scenario: a trust rule added to config takes effect on the next request without a restart (isaac-q1iu)
+    Given no OIDC trust rule is registered by any module
+    And the JWKS stub serves the issuer key
+    And a signed JWT bearer of kind "valid"
+    And the Isaac server is started
+    When the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 401
+    And the log has entries matching:
+      | event         | reason   |
+      | :auth/refused | :unknown |
+    When config changes to:
+      | http.auth.identity.lantern-ci.issuer                 | https://accounts.lantern.test       |
+      | http.auth.identity.lantern-ci.jwks                   | https://accounts.lantern.test/certs |
+      | http.auth.identity.lantern-ci.audience               | projects/harbor/topics/push         |
+      | http.auth.identity.lantern-ci.claims.email           | pubsub@harbor.test                  |
+      | http.auth.identity.lantern-ci.claims.email_verified  | true                                |
+      | http.auth.identity.lantern-ci.principal.name         | lantern-ci                          |
+      | http.auth.identity.lantern-ci.principal.scopes       | #{:google/push}                     |
+    And the isaac config is reloaded
+    And the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 200
+
+  @wip
+  Scenario: a config rule with a registered rule's id overrides it — the operator wins (isaac-q1iu)
+    Given an OIDC trust rule for google-pubsub is registered
+    And config:
+      | http.auth.identity.google-pubsub.issuer                | https://accounts.lantern.test       |
+      | http.auth.identity.google-pubsub.jwks                  | https://accounts.lantern.test/certs |
+      | http.auth.identity.google-pubsub.audience              | projects/harbor/topics/push         |
+      | http.auth.identity.google-pubsub.claims.email          | pubsub@harbor.test                  |
+      | http.auth.identity.google-pubsub.claims.email_verified | true                                |
+      | http.auth.identity.google-pubsub.principal.name        | harbor-door                         |
+      | http.auth.identity.google-pubsub.principal.scopes      | #{:google/push}                     |
+    And the JWKS stub serves the issuer key
+    And a signed JWT bearer of kind "valid"
+    And the Isaac server is started
+    When the client sends GET "/fixture/scoped" with the signed JWT
+    Then the response status is 200
+    And the log has entries matching:
+      | event         | principal   | uri             |
+      | :http/request | harbor-door | /fixture/scoped |
+
+  @wip
+  Scenario: config validate refuses a trust rule that cannot verify anything (isaac-q1iu)
+    A rule without issuer, jwks, audience or principal would accept nothing
+    or everything; it is a config error, not a silent no-op.
+    Given config:
+      | http.auth.identity.lantern-ci.issuer         | https://accounts.lantern.test |
+      | http.auth.identity.lantern-ci.principal.name | lantern-ci                    |
+    When isaac is run with "config validate"
+    Then the stderr matches:
+      | pattern                                  |
+      | http\.auth\.identity\.lantern-ci.*jwks   |
+    And the exit code is 1
