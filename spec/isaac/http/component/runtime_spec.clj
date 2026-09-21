@@ -38,54 +38,22 @@
           (finally
             (runner/stop!))))))
 
-  (it "installs runtime config and starts the change source"
+  (it "installs runtime config, and reconciles it away again on stop"
+    ;; Watching config for changes moved to foundation's runner (isaac-1pi2);
+    ;; this component's job is the install/reconcile pair around its lifetime.
     (let [calls    (atom [])
-          source   ::source
           instance (component-factory/create
                      :server-runtime
-                     {:config {:http {:hot-reload true}}
+                     {:config {:http {}}
                       :root   "/isaac"
-                      :opts   {:config-change-source source}
+                      :opts   {}
                       :module-index {:isaac.http {}}})]
       (with-redefs [sut/-registries               (constantly [::registry])
                     runtime/install!               #(swap! calls conj [:install %])
                     runtime/install-config-berths! #(swap! calls conj [:berths %])
-                    runtime/start!                 #(swap! calls conj [:source-start %])
-                    runtime/stop!                  #(swap! calls conj [:source-stop %])
                     runtime/reconcile!             #(swap! calls conj [:reconcile %1 %2 %3 %4])]
         (component/start instance)
         (component/stop instance))
-      (should= :install (ffirst @calls))
-      (should= :berths (first (second @calls)))
-      (should= [:source-start source] (nth @calls 2))
-      (should= :reconcile (first (nth @calls 3)))
-      (should= :berths (first (nth @calls 4)))
-      (should= [:source-stop source] (last @calls))))
-
-  (it "starts the asynchronous config reloader when hot reload is enabled"
-    (let [reloaded (promise)
-          instance (component-factory/create
-                     :server-runtime
-                     {:config {:http {:hot-reload true}}
-                      :root   "/isaac"
-                      :opts   {:config-change-source ::source}
-                      :module-index {}})]
-      (with-redefs [sut/-registries               (constantly [::registry])
-                    sut/-start-config-source        (fn [_ _ _] ::source)
-                    sut/-start-reloader!             (fn [source root host registries]
-                                                      (deliver reloaded {:path "crew/scrapper.edn"
-                                                                         :source source
-                                                                         :root root
-                                                                         :host host
-                                                                         :registries registries})
-                                                      (future nil))
-                    runtime/install!               (constantly nil)
-                    runtime/install-config-berths! (constantly nil)
-                    runtime/start!                 identity
-                    runtime/stop!                  (constantly nil)
-                    runtime/reconcile!             (constantly nil)]
-        (component/start instance)
-        (should= "crew/scrapper.edn" (:path (deref reloaded 1000 nil)))
-        (component/stop instance))))
+      (should= [:install :berths :reconcile :berths] (mapv first @calls))))
 
   )

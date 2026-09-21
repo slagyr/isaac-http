@@ -15,6 +15,10 @@
 
   (around [it]
     (nexus/-with-nexus {:root root :fs (fs/mem-fs)}
+      ;; A real host always has a default crew; foundation has required one
+      ;; since isaac-bfwn, and minting validates the whole config.
+      (fs/spit (fs/instance) (str root "/config/isaac.edn")
+               (pr-str {:defaults {:crew "main"}}))
       (it)))
 
   (it "mints a 32-byte base64url secret with no padding"

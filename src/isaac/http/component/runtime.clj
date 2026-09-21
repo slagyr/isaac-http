@@ -30,50 +30,26 @@
    :module-index (:module-index config)
    :root root})
 
-(defn -start-config-source [config root opts]
-  (or (:config-change-source opts)
-      (when (and root (:hot-reload config))
-        (runtime/watch-service-source root))))
-
-(defn -start-reloader! [source root host registries]
-  (future
-    (loop []
-      (when-let [path (runtime/poll! source 5000)]
-        (runtime/reload! {:root          root
-                          :fs            (fs/instance)
-                          :old-config    (loader/snapshot "reload: previous config for the reconcile diff")
-                          :registries    registries
-                          :host          host
-                          :path          path}))
-      (recur))))
-
 (deftype ServerRuntime [config root opts contribution-module-index running*]
   component/Component
   (start [this]
     (let [module-index  (or (:module-index config) contribution-module-index)
           config*       (assoc config :module-index module-index)
           registries    (-registries)
-          host          (host-context config* root opts)
-          source        (-start-config-source config* root opts)]
+          host          (host-context config* root opts)]
       (runtime/install! {:config config* :registries registries :host host})
       (runtime/install-config-berths! {:config config* :module-index module-index})
-      (some-> source runtime/start!)
-      (reset! running* {:host          host
-                        :registries    registries
-                        :reloader      (when (and source root (not (false? (:start-config-reloader? opts))))
-                                        (-start-reloader! source root host registries))
-                        :source        source})
+      (reset! running* {:host       host
+                        :registries registries})
       this))
   (stop [this]
-    (when-let [{:keys [host registries reloader source]} @running*]
+    (when-let [{:keys [host registries]} @running*]
       (let [module-index (:module-index host)]
         (when (seq registries)
           (runtime/reconcile! host config nil registries))
         (runtime/install-config-berths! {:config       nil
                                          :old-config   config
-                                         :module-index module-index}))
-      (some-> reloader future-cancel)
-      (some-> source runtime/stop!))
+                                         :module-index module-index})))
     (reset! running* nil)
     this))
 
