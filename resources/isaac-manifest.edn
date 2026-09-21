@@ -34,7 +34,8 @@
                           :namespace isaac.mcp-bridge.cli}}
 
  :isaac.config/check
- {:http-principals {:fn isaac.http.auth/validate-principals}}
+ {:http-principals {:fn isaac.http.auth/validate-principals}
+  :http-identity   {:fn isaac.http.auth/validate-identity-rules}}
 
  :isaac.config/schema
  {:http {:schema {:name        :http
@@ -53,6 +54,19 @@
                                                                                                 :previous {:type :map
                                                                                                             :schema {:hash {:type :string :validations [:present?]}
                                                                                                                      :scopes {:type :any :validations [:keyword-set?]}
+                                                                                                                     :expires {:type :string}}}}}}
+                                                              :identity {:type        :map
+                                                                         :description "Operator-declared OIDC trust rules, keyed by rule id. Same data shape modules contribute at :isaac.http/identity; a rule here with a registered rule's id replaces it. Values may be config refs (a vector path resolved against live config)."
+                                                                         :key-spec    {:type :id}
+                                                                         :value-spec  {:type :map
+                                                                                       :schema {:issuer    {:type :any :description "Issuer the JWT's iss must equal"}
+                                                                                                :jwks      {:type :any :description "JWKS document URL for the issuer's signing keys"}
+                                                                                                :audience  {:type :any :description "Audience the JWT's aud must contain"}
+                                                                                                :claims    {:type :any :description "Claims the JWT must match exactly"}
+                                                                                                :principal {:type :map
+                                                                                                            :description "Identity a matching JWT is accepted as"
+                                                                                                            :schema {:name    {:type :keyword :validations [:present?]}
+                                                                                                                     :scopes  {:type :any :validations [:keyword-set?]}
                                                                                                                      :expires {:type :string}}}}}}
                                                               :alerts {:type        :map
                                                                        :description "Auth attention alerts. Absent or true = on; false disables a kind."

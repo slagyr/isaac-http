@@ -147,7 +147,8 @@
   (let [principals (get-in load-result [:config :http :auth :principals] {})
         root       (or (get-in load-result [:config :root]) "")
         last-used  (try (audit/read-last-used root) (catch Exception _ {}))
-        oidc-rows  (map #(oidc-row % (:config load-result) last-used) (auth/identity-rules))]
+        oidc-rows  (map #(oidc-row % (:config load-result) last-used)
+                        (auth/identity-rules (:config load-result)))]
     (->> principals
          (mapcat (fn [[name principal]]
                    (cond-> [(row name principal last-used)]

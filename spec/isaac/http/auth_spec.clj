@@ -51,6 +51,46 @@
       (let [fn-or-rule (first (sut/identity-verifiers))]
         (should (or (fn? fn-or-rule) (map? fn-or-rule))))))
 
+  (it "reads a trust rule declared under http.auth.identity"
+    (binding [sut/*identity-verifiers* (atom {})]
+      (let [rule {:issuer    "https://accounts.lantern.test"
+                  :jwks      "https://accounts.lantern.test/certs"
+                  :audience  "projects/harbor/topics/push"
+                  :principal {:name :lantern-ci :scopes #{:google/push}}}]
+        (should= [(assoc rule :id :lantern-ci)]
+                 (sut/identity-rules {:http {:auth {:identity {:lantern-ci rule}}}})))))
+
+  (it "lets a config rule replace the registered rule of the same id"
+    (binding [sut/*identity-verifiers* (atom {})]
+      (sut/register-identity-entry! [:google-pubsub {:issuer    "https://accounts.lantern.test"
+                                                     :jwks      "https://accounts.lantern.test/certs"
+                                                     :audience  "projects/harbor/topics/push"
+                                                     :principal {:name :google-pubsub :scopes #{:google/push}}}])
+      (let [rules (sut/identity-rules
+                    {:http {:auth {:identity {:google-pubsub {:issuer    "https://accounts.lantern.test"
+                                                              :jwks      "https://accounts.lantern.test/certs"
+                                                              :audience  "projects/harbor/topics/push"
+                                                              :principal {:name :harbor-door :scopes #{:google/push}}}}}}})]
+        (should= 1 (count rules))
+        (should= :harbor-door (get-in (first rules) [:principal :name])))))
+
+  (it "keeps registered rules a config rule does not name"
+    (binding [sut/*identity-verifiers* (atom {})]
+      (sut/register-identity-entry! [:google-pubsub {:issuer "https://accounts.lantern.test"
+                                                     :jwks "https://accounts.lantern.test/certs"
+                                                     :audience "projects/harbor/topics/push"
+                                                     :principal {:name :google-pubsub :scopes #{:google/push}}}])
+      (should= #{:google-pubsub :lantern-ci}
+               (set (map :id (sut/identity-rules
+                               {:http {:auth {:identity {:lantern-ci {:issuer "https://ci.lantern.test"}}}}}))))))
+
+  (it "validates that a config trust rule can verify something"
+    (should= {:errors [{:key "http.auth.identity.lantern-ci.jwks" :value "must be present"}
+                       {:key "http.auth.identity.lantern-ci.audience" :value "must be present"}]}
+             (sut/validate-identity-rules
+               {:config {:http {:auth {:identity {:lantern-ci {:issuer "https://accounts.lantern.test"
+                                                               :principal {:name :lantern-ci}}}}}}})))
+
   (it "rejects malformed expiration dates safely"
     (should (sut/expired? "not-a-date")))
 

@@ -385,6 +385,9 @@
 (defn oidc-trust-rule-registered-with-config-refs []
   (oidc-fixture/register-trust-rule-with-config-refs!))
 
+(defn no-oidc-trust-rule-registered []
+  (reset! auth/*identity-verifiers* {}))
+
 (defn jwks-stub-serves-issuer-key []
   (oidc-fixture/stub-jwks-serves!))
 
@@ -445,6 +448,13 @@
   (fn []
     (stop-server!)
     (audit/reset-state!)))
+
+(defn config-changed
+  "Rewrites isaac.edn keys after startup and notifies the running server's
+   change source, so the next request sees the reloaded config."
+  [table]
+  (fconfig/config-applied table)
+  (notify-config-change! (isaac-file-path "isaac.edn")))
 
 (defn server-config-applied
   "Server harness overlay: bind-server-port, in-memory :server-config, and
@@ -1059,6 +1069,11 @@
   isaac.http.server-steps/oidc-trust-rule-registered-with-config-refs
   "Same rule, but :audience and :claims/:email are config paths (lantern.push.endpoint / .service-account).")
 
+(defgiven "no OIDC trust rule is registered by any module"
+  isaac.http.server-steps/no-oidc-trust-rule-registered
+  "Clears every registered :isaac.http/identity contribution, so only rules
+   declared under http.auth.identity are in play.")
+
 (defgiven "the JWKS stub serves the issuer key"
   isaac.http.server-steps/jwks-stub-serves-issuer-key)
 
@@ -1148,6 +1163,10 @@
 (defwhen "the server command is run without a port flag" isaac.http.server-steps/server-command-run-no-port)
 
 (defwhen "the server command is run with args {args:string}" isaac.http.server-steps/server-command-run-with-args)
+
+(defwhen "config changes to:" isaac.http.server-steps/config-changed
+  "Applies a key/value table to <root>/config/isaac.edn after startup and
+   notifies the config change source — the post-start twin of 'config:'.")
 
 (defwhen "the isaac config is reloaded" isaac.http.server-steps/config-reloaded)
 

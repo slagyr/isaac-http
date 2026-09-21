@@ -64,8 +64,29 @@
 (defn identity-verifiers []
   (vals @*identity-verifiers*))
 
-(defn identity-rules []
-  (filter map? (identity-verifiers)))
+(defn- rule-id [rule]
+  (or (:id rule) (:issuer rule)))
+
+(defn- registered-rules
+  "Data-shaped rules contributed by modules, keyed by rule id."
+  []
+  (into {} (map (juxt rule-id identity) (filter map? (identity-verifiers)))))
+
+(defn config-rules
+  "Operator-declared trust rules under http.auth.identity, keyed by rule id.
+   Trusting an issuer is configuration; the shape is the one modules contribute."
+  [cfg]
+  (reduce-kv (fn [acc id rule]
+               (cond-> acc
+                 (map? rule) (assoc id (assoc rule :id id))))
+             {}
+             (get-in cfg [:http :auth :identity] {})))
+
+(defn identity-rules
+  "Registered rules merged with the configured ones. A config rule with a
+   registered rule's id wins — the operator overrides the module."
+  ([] (identity-rules nil))
+  ([cfg] (vals (merge (registered-rules) (config-rules cfg)))))
 
 (defn- overlap-name [name]
   (keyword (str (clojure.core/name name) "@prev")))
@@ -131,6 +152,24 @@
                     (not (valid-expiration? (get-in principal [:previous :expires]))))
                (conj {:key (str prefix ".previous.expires") :value "must be an ISO date (YYYY-MM-DD)"}))))
          principals))}))
+
+(def ^:private required-rule-keys [:issuer :jwks :audience :principal])
+
+(defn validate-identity-rules
+  "A trust rule without issuer, jwks, audience or principal verifies nothing;
+   it is a config error, not a silent no-op."
+  [{:keys [config]}]
+  (let [rules (get-in config [:http :auth :identity])]
+    {:errors
+     (vec
+       (mapcat
+         (fn [[id rule]]
+           (let [prefix (str "http.auth.identity." (clojure.core/name id))]
+             (for [rule-key required-rule-keys
+                   :when (nil? (get rule rule-key))]
+               {:key   (str prefix "." (clojure.core/name rule-key))
+                :value "must be present"})))
+         rules))}))
 
 (defn require-scope! [request scope]
   (when-not (authorized? (:isaac/principal request) scope)

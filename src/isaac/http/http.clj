@@ -48,13 +48,16 @@
 (defn- code-verifiers []
   (filter fn? (auth/identity-verifiers)))
 
-(defn- oidc-rules []
-  (filter map? (auth/identity-verifiers)))
+(defn- oidc-rules [cfg]
+  (auth/identity-rules cfg))
+
+(defn- identity-declared? [cfg]
+  (or (seq (code-verifiers)) (seq (oidc-rules cfg))))
 
 (defn- oidc-identity [cfg bearer]
-  (when (and (seq bearer) (oidc/jwt-shaped? bearer) (seq (oidc-rules)))
+  (when (and (seq bearer) (oidc/jwt-shaped? bearer) (seq (oidc-rules cfg)))
     (let [opts     {:http (:http cfg) :cfg cfg}
-          hits     (keep (fn [rule] (oidc/verify bearer rule opts)) (oidc-rules))
+          hits     (keep (fn [rule] (oidc/verify bearer rule opts)) (oidc-rules cfg))
           accepted (first (remove :reason hits))
           refused  (remove #(= :issuer (:reason %)) (filter :reason hits))]
       (or accepted (first refused)))))
@@ -82,9 +85,13 @@
                            (auth/authenticate cfg bearer)
                            (verified-identity request))
             scope      (routes/required-scope request)
+            ;; A presented bearer is always adjudicated: a server with no auth
+            ;; configured still refuses a credential it cannot place rather
+            ;; than serving the request as anonymous.
             auth-on?   (or (contains? auth-cfg :principals)
                            (seq principals)
-                           (seq (auth/identity-verifiers)))
+                           (identity-declared? cfg)
+                           (seq bearer))
             remembered (when (and (nil? principal) (seq bearer))
                         (audit/remembered-name (auth/sha256 bearer)))
             reason     (when auth-on?

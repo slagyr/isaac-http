@@ -65,9 +65,11 @@
                     (apply tests/run-jvm-spec! *command-line-args*))}
 
   ;; Server feature suite exceeds the shared 60s suite timeout under cold
-  ;; generation (JVM shell was ~82s wall); wrap gherclj directly with a 180s
-  ;; budget so native parity can finish (isaac-ykuf). jvm-features keeps the
-  ;; shared helper (shell timeout is also 60s — bump via same pattern if needed).
+  ;; generation (JVM shell was ~82s wall); wrap gherclj directly with a 300s
+  ;; budget so native parity can finish (isaac-ykuf). The suite reached ~179s
+  ;; on a loaded machine at isaac-q1iu, so the old 180s budget tripped on
+  ;; growth alone. jvm-features keeps the shared helper (shell timeout is also
+  ;; 60s — bump via same pattern if needed).
   features {:doc  "Run gherclj feature specs natively (excludes @slow and @wip)"
             :requires ([babashka.fs :as fs]
                        [bb.test-tasks :as tests]
@@ -83,9 +85,9 @@
                                               ["-t" "~slow" "-t" "~wip"]
                                               args)))
                         fut  (future (run!))
-                        res  (deref fut 180000 timeout-token)]
+                        res  (deref fut 300000 timeout-token)]
                     (when (= res timeout-token)
-                      (println "features timed out after 180s")
+                      (println "features timed out after 300s")
                       (System/exit 124))
                     res)}
 
@@ -101,9 +103,9 @@
                                    (println "Cleaned target/")
                                    (apply process/shell cmd))
                             fut (future (run!))
-                            res (deref fut 180000 timeout-token)]
+                            res (deref fut 300000 timeout-token)]
                         (when (= res timeout-token)
-                          (println "jvm-features timed out after 180s")
+                          (println "jvm-features timed out after 300s")
                           (System/exit 124))
                         (when (pos? (:exit res))
                           (System/exit (:exit res)))
