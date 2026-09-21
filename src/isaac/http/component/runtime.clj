@@ -4,26 +4,18 @@
     [isaac.component.factory :as component-factory]
     [isaac.component.protocol :as component]
     [isaac.component.registry :as component-registry]
+    [isaac.config.configurator :as configurator]
     [isaac.config.loader :as loader]
     [isaac.config.runtime :as runtime]
     [isaac.fs :as fs]
     [isaac.http.http :as http]
     [isaac.logger :as log]))
 
-(def ^:private optional-registry-syms
-  '[isaac.hail.bands/registry
-    isaac.hooks/registry
-    isaac.cron.service/registry])
-
-(defn- resolve-var [sym]
-  (try (requiring-resolve sym) (catch Throwable _ nil)))
-
-(defn- resolve-registry [sym]
-  (when-let [v (resolve-var sym)]
-    (if (var? v) @v v)))
-
-(defn -registries []
-  (vec (keep resolve-registry optional-registry-syms)))
+(defn -registries
+  "What to reconcile at boot: whatever modules declared through
+   :isaac.config/component. http names no module (isaac-bbe0)."
+  ([] (-registries {}))
+  ([module-index] (configurator/declared-registries module-index)))
 
 (defn- host-context [config root opts]
   {:connect-ws! (:connect-ws! opts)
@@ -35,7 +27,7 @@
   (start [this]
     (let [module-index  (or (:module-index config) contribution-module-index)
           config*       (assoc config :module-index module-index)
-          registries    (-registries)
+          registries    (-registries module-index)
           host          (host-context config* root opts)]
       (runtime/install! {:config config* :registries registries :host host})
       (runtime/install-config-berths! {:config config* :module-index module-index})
