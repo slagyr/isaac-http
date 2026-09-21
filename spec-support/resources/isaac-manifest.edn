@@ -2,7 +2,7 @@
  :version "0.0.0"
  :factory isaac.module.protocol/module
 
- :isaac.http/comm
+ :isaac.agent/comm
  {:test-comm {:namespace    isaac.http.test-comm
               :extra-schema {:loft  {:type :string
                                      :validations [[:present-when? :type :test-comm]]}

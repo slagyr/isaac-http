@@ -17,7 +17,7 @@
       (should= opts (select-keys @seen (keys opts)))))
 
   (it "binds the discovered module index while starting so comm factories resolve"
-    (let [idx   {:isaac.http.test-comm {:manifest {:isaac.http/comm {:test-comm {}}}}}
+    (let [idx   {:isaac.http.test-comm {:manifest {:isaac.agent/comm {:test-comm {}}}}}
           bound (atom :unset)]
       (with-redefs [runtime/valid-start? (constantly true)
                     runner/start!        (fn [_]
@@ -51,7 +51,7 @@
   (it "ignores pre-discovery comm errors after the discovered module validates the comm type"
     (let [started (atom nil)
           config  {:module-index {:isaac.http.test-comm
-                                  {:manifest {:isaac.http/comm {:test-comm {}}}}}}]
+                                  {:manifest {:isaac.agent/comm {:test-comm {}}}}}}]
       (with-redefs [runtime/valid-start? (constantly true)
                     runner/start!        #(reset! started %)]
         (sut/start! {:config        config

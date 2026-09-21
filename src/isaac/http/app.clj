@@ -20,8 +20,7 @@
 (defn- contributed-comm-types [config]
   (->> (:module-index config)
        vals
-       (mapcat #(keys (or (get-in % [:manifest :isaac.server/comm])
-                             (get-in % [:manifest :isaac.http/comm]))))
+       (mapcat #(keys (get-in % [:manifest :isaac.agent/comm])))
        (map (comp name keyword))
        set))
 

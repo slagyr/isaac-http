@@ -21,17 +21,7 @@
                                                        :schema  {:method  {:type :keyword :validations [:present?]}
                                                                  :path    {:type :string :validations [:present?]}
                                                                  :handler {:type :symbol :validations [:present?]}
-                                                                 :scope   {:type :keyword}}}}}
-             :isaac.http/comm {:description "Communication channels (Discord, iMessage, ACP, …). Manifest contributions name available impls and carry the impl's :namespace (whose load implements isaac.comm.factory/create for that :type) plus its :extra-schema (extension fields composed into [:comms] slots of that :type). User-instantiated comm slots in the [:comms] config slot also count toward this berth, so `[:registered-in? :isaac.http/comm [:comms]]` accepts both manifest impl ids (the common :type values) and slot ids. :register-fn wires each live slot into comm-registry so the delivery worker can send outbound replies."
-                                 :register-fn   isaac.comm.registry/register-instance!
-                                 :deregister-fn isaac.comm.registry/deregister-instance!
-                                 :schema      {:type       :map
-                                               :key-spec   {:type :keyword}
-                                               :value-spec {:type    :map
-                                                            :schema  {:namespace     {:type :symbol :validations [:present?]}
-                                                                      :extra-schema  {:type :schema-map}
-                                                                      :send-schema   {:type :schema-map}
-                                                                      :configurable? {:type :boolean}}}}}}
+                                                                 :scope   {:type :keyword}}}}}}
 
  :isaac/component {:server-runtime {:namespace isaac.http.component.runtime}
                    :http           {:namespace isaac.http.component.http}}
@@ -94,11 +84,11 @@
                    :value-spec  {:name           :comm
                                  :type           :map
                                  :factory        isaac.comm.factory/create!
-                                 :dynamic-schema {:berth :isaac.http/comm :path [:extra-schema]}
+                                 :dynamic-schema {:berth :isaac.agent/comm :path [:extra-schema]}
                                  :schema         {:type {:type         :id
                                                          :options-from :comms
                                                          :description  "Manifest comm kind to instantiate"
-                                                         :validations  [[:registered-in? :isaac.http/comm [:comms]]]}
+                                                         :validations  [[:registered-in? :isaac.agent/comm [:comms]]]}
                                                   :crew {:type        :id
                                                          :description "Crew id this comm routes into"
                                                          :validations [:crew-exists?]}}}}}}}
