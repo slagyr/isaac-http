@@ -55,15 +55,15 @@
     (try
       (let [cfg (edn/read-string content)]
         (if (or (not (map? cfg))
-                (contains? (or (:defaults cfg) {}) :crew)
-                (and (contains? (or (:defaults cfg) {}) :model)
+                (contains? (or (get-in cfg [:defaults :frequencies]) {}) :crew)
+                (and (contains? (or (get-in cfg [:defaults :crew]) {}) :model)
                      (contains? cfg :crew)))
           content
           (let [crew-id (if (= 1 (count (:crew cfg)))
                           (first (keys (:crew cfg)))
                           "main")]
             (pr-str (-> cfg
-                        (assoc-in [:defaults :crew] crew-id)
+                        (assoc-in [:defaults :frequencies :crew] crew-id)
                         (update :crew (fn [crew]
                                         (let [crew (or crew {})]
                                           (if (contains? crew crew-id)
@@ -300,13 +300,13 @@
     (assoc-in cfg [:http :burst] (burst/resolved (get-in cfg [:http :burst])))))
 
 (defn- stamp-loaded-default-crew [cfg]
-  (if (or (nil? cfg) (contains? (or (:defaults cfg) {}) :crew))
+  (if (or (nil? cfg) (contains? (or (get-in cfg [:defaults :frequencies]) {}) :crew))
     cfg
     (let [crew-id (if (= 1 (count (:crew cfg)))
                     (first (keys (:crew cfg)))
                     "main")]
       (-> cfg
-          (assoc-in [:defaults :crew] crew-id)
+          (assoc-in [:defaults :frequencies :crew] crew-id)
           (update :crew (fn [crew]
                           (let [crew (or crew {})]
                             (if (contains? crew crew-id)
@@ -315,7 +315,7 @@
 
 (defn- crew-schema-error? [error]
   (let [k (str (or (:key error) (:path error)))]
-    (boolean (re-find #"^defaults\.crew" k))))
+    (boolean (re-find #"^defaults\.(crew|frequencies\.crew)" k))))
 
 (defn- load-server-config-result [root fs*]
   (let [load!       #(loader/load-config-result {:root root :fs fs*})
