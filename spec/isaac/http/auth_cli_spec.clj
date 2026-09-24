@@ -45,6 +45,20 @@
       (should (str/includes? (str error) "already exists"))
       (should (str/includes? (str error) "rotate"))))
 
+  (it "renders each set-config validation error as one <path>: <message> line, not a raw EDN vector (isaac-p4oj)"
+    (with-redefs [mutate/set-config
+                  (fn [& _]
+                    {:status :invalid
+                     :errors [{:key "http.auth.principals.ci.scopes" :value "must be a set"}
+                              {:key "http.auth.principals.ci.hash" :value "is required"}]})]
+      (let [{:keys [exit error]} (sut/mint! root "ci" {:scopes "hail/send"})]
+        (should= 1 exit)
+        (should= (str "http.auth.principals.ci.scopes: must be a set\n"
+                     "http.auth.principals.ci.hash: is required")
+                 error)
+        (should-not (str/includes? error "{:key"))
+        (should-not (str/includes? error "[{")))))
+
   (it "requires at least one scope to mint"
     (let [{:keys [exit error]} (sut/mint! root "ci" {})]
       (should= 1 exit)

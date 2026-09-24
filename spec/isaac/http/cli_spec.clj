@@ -1,5 +1,6 @@
 (ns isaac.http.cli-spec
   (:require
+    [clojure.string :as str]
     [isaac.cli.api :as cli-api]
     [isaac.cli.registry :as registry]
     [isaac.config.api :as config]
@@ -228,6 +229,25 @@
             (should= "sekrit-token-value-0123456789ab\n" out)
             (should= "ci" (:name @called))
             (should= "hail/send" (get-in @called [:opts :scopes]))))))
+
+    (it "prints a validation failure as one <path>: <message> line per error on stderr, not a raw EDN vector (isaac-p4oj)"
+      (with-redefs [isaac.http.auth-cli/mint!
+                    (fn [& _]
+                      {:exit  1
+                       :error (str "http.auth.principals.ci.scopes: must be a set\n"
+                                  "http.auth.principals.ci.hash: is required")})
+                    sut/run (fn [_] (throw (ex-info "should not start server" {})))]
+        (module-loader/process-manifest-berths! (module-loader/builtin-index))
+        (let [err (StringWriter.)
+              out (StringWriter.)]
+          (binding [*out* out *err* err]
+            (should= 1 (main/run ["--root" "/tmp/auth-home" "http" "auth" "mint" "ci" "--scopes" "hail/send"])))
+          (should= "" (str out))
+          (should= (str "http.auth.principals.ci.scopes: must be a set\n"
+                       "http.auth.principals.ci.hash: is required\n")
+                   (str err))
+          (should-not (str/includes? (str err) "{:key"))
+          (should-not (str/includes? (str err) "[{")))))
 
     (it "auth --help documents mint rotate revoke list and the one-time secret rule"
       (let [output (with-out-str (should= 0 (sut/run-fn {:_raw-args ["auth" "--help"]})))]

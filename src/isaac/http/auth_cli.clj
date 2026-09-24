@@ -56,6 +56,16 @@
 (defn- existing [root name]
   (get-in (load-config root) [:http :auth :principals (keyword name)]))
 
+(defn- format-error [{:keys [key value]}]
+  (str key ": " value))
+
+(defn- format-errors
+  "Renders each mutate/set-config validation error as its own `<path>: <message>`
+   line, instead of the raw EDN vector — an operator reading `isaac http auth
+   mint` output on a terminal wants readable lines, not (pr-str errors)."
+  [errors]
+  (str/join "\n" (map format-error errors)))
+
 (defn mint!
   [root name {:keys [scopes expires]}]
   (let [scope-set (parse-scopes scopes)]
@@ -73,7 +83,7 @@
             result    (write-principal! root name principal)]
         (if (= :ok (:status result))
           {:exit 0 :secret secret}
-          {:exit 1 :error (pr-str (:errors result))})))))
+          {:exit 1 :error (format-errors (:errors result))})))))
 
 (defn- parse-overlap [overlap]
   (when (seq overlap)
@@ -98,7 +108,7 @@
             result   (write-principal! root name new-p)]
         (if (= :ok (:status result))
           {:exit 0 :secret secret}
-          {:exit 1 :error (pr-str (:errors result))})))))
+          {:exit 1 :error (format-errors (:errors result))})))))
 
 (defn revoke!
   [root name]
