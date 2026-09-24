@@ -17,20 +17,20 @@
         io.github.slagyr/gherclj {:git/tag "v1.3.0" :git/sha "9c3bb1d"}
         io.github.cleancoders/c3kit-wire {:git/tag "2.5.1" :git/sha "1fae444"}
         io.github.slagyr/isaac-foundation {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                           :git/sha "b81e021c7624017782c3b00ebc467df7bec57bf7"}
+                                           :git/sha "fae35d681a906020790da3564c910ae28e4a6821"}
         io.github.slagyr/isaac-agent {:git/url "https://github.com/slagyr/isaac-agent.git"
                                       :git/sha "da9214aa72786fd830847c5542f5ea7781a44410"}
         io.github.slagyr/isaac-foundation-spec {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                                :git/sha "b81e021c7624017782c3b00ebc467df7bec57bf7"
+                                                :git/sha "fae35d681a906020790da3564c910ae28e4a6821"
                                                 :deps/root "spec"}
         io.github.slagyr/isaac-foundation-test-support {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                                        :git/sha "b81e021c7624017782c3b00ebc467df7bec57bf7"
+                                                        :git/sha "fae35d681a906020790da3564c910ae28e4a6821"
                                                         :deps/root "spec-support"}
         marigold.bridge/marigold.bridge {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                         :git/sha "b81e021c7624017782c3b00ebc467df7bec57bf7"
+                                         :git/sha "fae35d681a906020790da3564c910ae28e4a6821"
                                          :deps/root "modules/marigold.bridge"}
         marigold.longwave/marigold.longwave {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                             :git/sha "b81e021c7624017782c3b00ebc467df7bec57bf7"
+                                             :git/sha "fae35d681a906020790da3564c910ae28e4a6821"
                                              :deps/root "modules/marigold.longwave"}}
 
  :tasks
