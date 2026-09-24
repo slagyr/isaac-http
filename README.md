@@ -2,8 +2,7 @@
 
 <img align="left" width="200" src="https://raw.githubusercontent.com/slagyr/isaac-http/main/isaac-http.png" alt="isaac-http" style="margin-right: 20px; margin-bottom: 10px;">
 
-Isaac HTTP is the HTTP host module (`:isaac.http`). It declares the HTTP route and communication berths, contributes the listener component and built-in routes, and exposes the `mcp-bridge` CLI command.
-
+Isaac HTTP is the HTTP host module (`:isaac.http`). It declares the HTTP route and communication berths, contributes the listener component and built-in routes, and exposes the `isaac http` CLI command (auth principals).
 Depends on [isaac-foundation](https://github.com/slagyr/isaac-foundation) for module machinery and shared utilities. The server repo also carries the host-side orchestration namespaces that wire everything during boot.
 
 <br>

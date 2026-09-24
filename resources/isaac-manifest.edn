@@ -1,5 +1,5 @@
 {:id        :isaac.http
- :version   "0.1.24"
+ :version   "0.1.25"
  :builtin?  true
  :factory   isaac.http.module/create-module
 
@@ -28,10 +28,7 @@
 
  :isaac/cli {:http {:usage     "http <subcommand> [options]"
                     :summary   "HTTP module: manage principals (auth mint|rotate|revoke|list)"
-                    :namespace isaac.http.cli}
-             :mcp-bridge {:usage     "mcp-bridge [options]"
-                          :summary   "stdio MCP server that proxies a turn to POST /mcp/turns/{id}"
-                          :namespace isaac.mcp-bridge.cli}}
+                    :namespace isaac.http.cli}}
 
  :isaac.config/check
  {:http-principals {:fn isaac.http.auth/validate-principals}
