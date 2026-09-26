@@ -146,7 +146,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
   # A namespaced required scope stays exact: :cli does not satisfy :cli/acp,
   # and :cli/acp does not satisfy :cli/logs.
 
-  @wip
   Scenario: a principal holding a namespaced cli scope reaches a route that requires cli (isaac-jvzn)
     Given principal "quill" is configured with secret "quill-secret" and scopes "cli/acp"
     And a fixture route GET "/fixture/cli-door" requires scope "cli"
@@ -157,7 +156,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
       | event         | principal | uri                |
       | :http/request | quill     | /fixture/cli-door |
 
-  @wip
   Scenario: a principal holding a scope outside the cli namespace is refused the cli door (isaac-jvzn)
     Given principal "dispatcher" is configured with secret "dispatch-secret" and scopes "hail/send"
     And a fixture route GET "/fixture/cli-door" requires scope "cli"
@@ -168,7 +166,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
       | event         | principal  | reason |
       | :auth/refused | dispatcher | :scope |
 
-  @wip
   Scenario: a principal holding cli reaches a route that requires cli (isaac-jvzn)
     Given principal "helm" is configured with secret "helm-secret" and scopes "cli"
     And a fixture route GET "/fixture/cli-door" requires scope "cli"
@@ -176,7 +173,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
     When the client sends GET "/fixture/cli-door" with header "Authorization: Bearer helm-secret"
     Then the response status is 200
 
-  @wip
   Scenario: a principal holding the exact command scope reaches a route that requires that scope (isaac-jvzn)
     Given principal "quill" is configured with secret "quill-secret" and scopes "cli/acp"
     And a fixture route GET "/fixture/one-command" requires scope "cli/acp"
@@ -184,7 +180,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
     When the client sends GET "/fixture/one-command" with header "Authorization: Bearer quill-secret"
     Then the response status is 200
 
-  @wip
   Scenario: a principal holding every scope reaches a route that requires one command scope (isaac-jvzn)
     Given principal "skipper" is configured with secret "skipper-secret" and scopes "*"
     And a fixture route GET "/fixture/one-command" requires scope "cli/acp"
@@ -192,7 +187,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
     When the client sends GET "/fixture/one-command" with header "Authorization: Bearer skipper-secret"
     Then the response status is 200
 
-  @wip
   Scenario: a principal holding cli is refused a route that requires one command scope (isaac-jvzn)
     Given principal "helm" is configured with secret "helm-secret" and scopes "cli"
     And a fixture route GET "/fixture/one-command" requires scope "cli/acp"
@@ -203,7 +197,6 @@ Feature: Per-principal scoped auth (isaac-bzgw, epic isaac-gym1)
       | event         | principal | reason |
       | :auth/refused | helm      | :scope |
 
-  @wip
   Scenario: a principal holding a sibling command scope is refused (isaac-jvzn)
     Given principal "scribe" is configured with secret "scribe-secret" and scopes "cli/logs"
     And a fixture route GET "/fixture/one-command" requires scope "cli/acp"

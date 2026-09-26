@@ -120,7 +120,9 @@
 (defn authorized? [principal scope]
   (let [scopes (set (map #(if (keyword? %) % (keyword %)) (:scopes principal)))]
     (or (contains? scopes :*)
-        (contains? scopes scope))))
+        (contains? scopes scope)
+        (and (nil? (namespace scope))
+             (some #(= (name scope) (namespace %)) scopes)))))
 
 (defn valid-expiration? [expires]
   (or (nil? expires)
