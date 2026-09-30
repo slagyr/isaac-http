@@ -2,6 +2,7 @@
   (:require
     [clojure.edn :as edn]
     [isaac.config.berths :as berths]
+    [isaac.config.validation-lexicon :as vlex]
     [isaac.fs :as fs]
     [isaac.nexus :as nexus]
     [isaac.module.loader :as module-loader]
@@ -54,7 +55,10 @@
                 (set (keys (:berths manifest))))
       (should= #{:http} (set (keys (:isaac/cli manifest))))
       (should-not (contains? manifest :isaac.http/route))
-      (should= #{:http} (set (keys (:isaac.config/schema manifest))))))
+      ;; isaac-mdj2: :server is the retired-migration shim isaac-http now
+      ;; carries itself (foundation's tip dropped it with no replacement) —
+      ;; see the comment on :server in resources/isaac-manifest.edn.
+      (should= #{:http :server} (set (keys (:isaac.config/schema manifest))))))
 
   (it "every inline :isaac.config/schema contribution meta-validates"
     (doseq [[config-key {:keys [schema]}] (schema-contributions)]
@@ -62,8 +66,13 @@
       (should-not-throw (isaac.schema.meta/conform-spec! schema))))
 
   (it "no config path is claimed twice — one schema owner per path (berth :config XOR :isaac.config/schema factory)"
-    (let [paths (berths/config-paths (module-loader/builtin-index))]
-      (should= [] (->> paths frequencies (keep (fn [[p n]] (when (> n 1) p))) vec))))
+    ;; isaac-mdj2: register contributed existence refs (:crew-exists?, from
+    ;; isaac-agent's :comms.crew field) before walking berths/config-paths —
+    ;; see the matching note in configurator_spec.clj.
+    (let [module-index (module-loader/builtin-index)]
+      (vlex/register-contributed-existence-refs! module-index)
+      (let [paths (berths/config-paths module-index)]
+        (should= [] (->> paths frequencies (keep (fn [[p n]] (when (> n 1) p))) vec)))))
 
   (it "resolves every symbol the server manifest references"
     (let [manifest (read-manifest "resources/isaac-manifest.edn")]

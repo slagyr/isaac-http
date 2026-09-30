@@ -4,45 +4,18 @@
  :factory  isaac.module.protocol/module
  :description "Test-only schema fragments so configurator ownership specs see snapshot-only entity collections on the server classpath."
 
+ ;; isaac-mdj2: :crew, :models, :providers, and :comms used to be faked here
+ ;; because isaac-http's pinned isaac-agent/isaac-foundation predated
+ ;; isaac-6pqo/isaac-h2oo, which moved those tables (and the :comms
+ ;; factory/berth) to isaac-agent for real. Now that this repo's pins are
+ ;; past both, isaac-agent provides all four on the classpath and faking
+ ;; them here collided (isaac-http's own manifest already dropped its
+ ;; duplicate :comms schema in isaac-6pqo). Only :lantern — a fixture with
+ ;; no real owner — remains.
  :isaac.config/schema
- {:crew      {:schema {:name           "crew table"
-                       :type           :map
-                       :snapshot-only? true
-                       :key-spec       {:type :string}
-                       :value-spec     {:name :crew :type :map :schema {}}}}
-  :models    {:schema {:name           "model table"
-                       :type           :map
-                       :snapshot-only? true
-                       :key-spec       {:type :string}
-                       :value-spec     {:name :model :type :map :schema {}}}}
-  :providers {:schema {:name           "provider table"
-                       :type           :map
-                       :snapshot-only? true
-                       :key-spec       {:type :string}
-                       :value-spec     {:name :provider :type :map :schema {}}}}
-  :lantern   {:schema {:name        :lantern
+ {:lantern   {:schema {:name        :lantern
                        :type        :map
                        :description "Test-only: the lantern fixture issuer's door, for OIDC trust rules that point at config."
                        :schema      {:push {:type   :map
                                             :schema {:endpoint        {:type :string}
-                                                     :service-account {:type :string}}}}}}
-  ;; isaac-6pqo: :comms is now declared by isaac-agent (it owns the
-  ;; :isaac.agent/comm berth and factory this composes). Faked here, same
-  ;; as :crew/:models/:providers above, so server-boot specs can exercise
-  ;; app.clj's comm-error handling without isaac-http naming :comms itself.
-  ;; isaac.comm.factory/create! still resolves at this repo's current
-  ;; isaac-foundation pin, so live comm-instantiation features still work
-  ;; too; this fixture can drop these entries once isaac-http's
-  ;; foundation/agent pins move past isaac-6pqo/isaac-h2oo (isaac-agent
-  ;; would then provide all four for real).
-  :comms     {:schema {:name        "comms table"
-                       :type        :map
-                       :key-spec    {:type :id}
-                       :value-spec  {:name           :comm
-                                     :type           :map
-                                     :factory        isaac.comm.factory/create!
-                                     :dynamic-schema {:berth :isaac.agent/comm :path [:extra-schema]}
-                                     :schema         {:type {:type         :id
-                                                             :options-from :comms
-                                                             :validations  [[:registered-in? :isaac.agent/comm [:comms]]]}
-                                                      :crew {:type :id}}}}}}}
+                                                     :service-account {:type :string}}}}}}}}

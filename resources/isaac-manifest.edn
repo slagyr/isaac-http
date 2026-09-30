@@ -2,6 +2,7 @@
  :version   "0.1.25"
  :builtin?  true
  :factory   isaac.http.module/create-module
+ :handbook  "isaac/http/handbook.md"
 
  :berths    {:isaac.http/identity {:description "Inbound request identity. Map contributions are data-shaped OIDC trust rules ({:issuer :jwks :audience :claims :principal}); :issuer, :audience and :claims values may be config refs — a vector path such as [:google :push :endpoint] resolved against live config, and a rule with an unresolved ref is inert. A symbol contribution is a code verifier (fn [request] -> {:name ... :scopes #{...}} | nil)."
                                       :schema {:type :map
@@ -43,15 +44,17 @@
                                                :schema      {:token {:type        :string
                                                                      :description "Bearer token for inbound HTTP requests"}
                                                              :principals {:type :map
+                                                                          :description "Named bearer-token principals, keyed by principal name; each holds only a secret hash, never the secret itself. Managed via `isaac http auth mint|rotate|revoke|list`."
                                                                           :key-spec {:type :id}
                                                                           :value-spec {:type :map
-                                                                                       :schema {:hash {:type :string :validations [:present?]}
-                                                                                                :scopes {:type :any :validations [:keyword-set?]}
-                                                                                                :expires {:type :string}
+                                                                                       :schema {:hash {:type :string :validations [:present?] :description "SHA-256 hash (sha256:<hex>) of the principal's bearer secret"}
+                                                                                                :scopes {:type :any :validations [:keyword-set?] :description "Scopes this principal may use; #{:*} grants every scope"}
+                                                                                                :expires {:type :string :description "ISO date (YYYY-MM-DD) or instant after which this principal is refused"}
                                                                                                 :previous {:type :map
-                                                                                                            :schema {:hash {:type :string :validations [:present?]}
-                                                                                                                     :scopes {:type :any :validations [:keyword-set?]}
-                                                                                                                     :expires {:type :string}}}}}}
+                                                                                                            :description "Prior secret kept valid through a rotation overlap window"
+                                                                                                            :schema {:hash {:type :string :validations [:present?] :description "SHA-256 hash of the overlapping prior secret"}
+                                                                                                                     :scopes {:type :any :validations [:keyword-set?] :description "Scopes carried over from the rotated principal"}
+                                                                                                                     :expires {:type :string :description "When the overlap window ends and the prior secret stops working"}}}}}}
                                                               :identity {:type        :map
                                                                          :description "Operator-declared OIDC trust rules, keyed by rule id. Same data shape modules contribute at :isaac.http/identity; a rule here with a registered rule's id replaces it. Values may be config refs (a vector path resolved against live config)."
                                                                          :key-spec    {:type :id}
@@ -62,15 +65,15 @@
                                                                                                 :claims    {:type :any :description "Claims the JWT must match exactly"}
                                                                                                 :principal {:type :map
                                                                                                             :description "Identity a matching JWT is accepted as"
-                                                                                                            :schema {:name    {:type :keyword :validations [:present?]}
-                                                                                                                     :scopes  {:type :any :validations [:keyword-set?]}
-                                                                                                                     :expires {:type :string}}}}}}
+                                                                                                            :schema {:name    {:type :keyword :validations [:present?] :description "Principal name a matching JWT authenticates as"}
+                                                                                                                     :scopes  {:type :any :validations [:keyword-set?] :description "Scopes granted to a JWT that matches this rule"}
+                                                                                                                     :expires {:type :string :description "ISO date or instant after which this rule's principal is refused"}}}}}}
                                                               :alerts {:type        :map
                                                                        :description "Auth attention alerts. Absent or true = on; false disables a kind."
-                                                                       :schema      {:first-use {:type :boolean}
-                                                                                     :expired   {:type :boolean}
-                                                                                     :revoked   {:type :boolean}
-                                                                                     :expiring  {:type :boolean}}}}}
+                                                                       :schema      {:first-use {:type :boolean :description "Post attention the first time a principal is ever used"}
+                                                                                     :expired   {:type :boolean :description "Post attention when an expired secret is presented"}
+                                                                                     :revoked   {:type :boolean :description "Post attention when a revoked (removed) secret is presented"}
+                                                                                     :expiring  {:type :boolean :description "Post attention once a day for a principal expiring within 7 days"}}}}}
                                   :oidc       {:type        :map
                                                :description "Generic OIDC/JWT verification knobs. Trust rules live on contributing modules."
                                                :schema      {:skew-s {:type :int :default 60 :coercions [[:default 60]] :description "Clock skew in seconds for exp/nbf/iat"}
@@ -86,4 +89,32 @@
                                                              :notify?     {:type :boolean :default true :coercions [[:default true]] :description "Post attention on burst start and end"}
                                                              :throttle?   {:type :boolean :default true :coercions [[:default true]] :description "Answer flagged clients with 429"}}}
                                   :host  {:type :string :description "Bind host"}
-                                  :port  {:type :int :description "Bind port"}}}}}}
+                                  :port  {:type :int :description "Bind port"}}}}
+  ;; isaac-mdj2: this retired-migration shim used to live in isaac-foundation
+  ;; (schema_base.clj); foundation's tip dropped it with no replacement, and
+  ;; isaac-http is the natural owner of five of its six pointers (the
+  ;; :http-bound settings it migrated from :server). Restored here, verbatim,
+  ;; so the existing "retired server X points at http X" behavior (and the
+  ;; features covering it) keeps working.
+  :server {:schema {:type        :map
+                    :description "Retired HTTP/process settings"
+                    :schema      {:auth               {:type   :map
+                                                        :description "Retired; use :http :auth"
+                                                        :schema {:token {:type        :string
+                                                                        :description "Retired; use :http :auth :token"
+                                                                        :validations [[:retired? "use :http :auth :token"]]}}}
+                                  :burst              {:type        :map
+                                                       :description "Retired; use :http :burst"
+                                                       :validations [[:retired? "use :http :burst"]]}
+                                  :host               {:type        :string
+                                                       :description "Retired; use :http :host"
+                                                       :validations [[:retired? "use :http :host"]]}
+                                  :hot-reload         {:type        :boolean
+                                                       :description "Retired; use top-level :hot-reload"
+                                                       :validations [[:retired? "use :hot-reload"]]}
+                                  :port               {:type        :int
+                                                       :description "Retired; use :http :port"
+                                                       :validations [[:retired? "use :http :port"]]}
+                                  :suspend-timeout-ms {:type        :int
+                                                       :description "Retired; use :bridge :suspend-timeout-ms"
+                                                       :validations [[:retired? "use :bridge :suspend-timeout-ms"]]}}}}}}
