@@ -1,15 +1,15 @@
 (ns isaac.http.component.runtime
   (:require
     [clojure.string :as str]
-    [isaac.component.factory :as component-factory]
-    [isaac.component.protocol :as component]
-    [isaac.component.registry :as component-registry]
-    [isaac.config.configurator :as configurator]
-    [isaac.config.loader :as loader]
-    [isaac.config.runtime :as runtime]
-    [isaac.fs :as fs]
+    [isaac.foundation.component.factory :as component-factory]
+    [isaac.foundation.component.protocol :as component]
+    [isaac.foundation.component.registry :as component-registry]
+    [isaac.foundation.config.configurator :as configurator]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.runtime :as runtime]
+    [isaac.foundation.fs :as fs]
     [isaac.http.http :as http]
-    [isaac.logger :as log]))
+    [isaac.foundation.logger :as log]))
 
 (defn -registries
   "What to reconcile at boot: whatever modules declared through

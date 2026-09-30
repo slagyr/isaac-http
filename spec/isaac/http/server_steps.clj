@@ -4,31 +4,31 @@
     [clojure.edn :as edn]
     [clojure.string :as str]
     [gherclj.core :as g :refer [defgiven defwhen defthen helper!]]
-    [isaac.component.protocol]
-    [isaac.component.registry]
-    [isaac.config.config-steps :as config-steps]
-    [isaac.config.loader :as loader]
-    [isaac.config.runtime :as runtime]
-    [isaac.config.server-config :as srv-config]
+    [isaac.foundation.component.protocol]
+    [isaac.foundation.component.registry]
+    [isaac.foundation.config.config-steps :as config-steps]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.runtime :as runtime]
+    [isaac.http.config.server-config :as srv-config]
     [isaac.foundation.cli-steps :as fcli]
     [isaac.foundation.harness-config-steps :as fconfig]
     [isaac.foundation.fs-steps :as ffs]
     [isaac.foundation.root-steps :as froot]
-    [isaac.log.file :as log-file]
+    [isaac.foundation.log.file :as log-file]
     [isaac.http.logging :as server-logging]
     [isaac.http.test-store]
     [isaac.http.cli :as server]
-    [isaac.module.loader :as module-loader]
-    [isaac.session.store.spi :as store]
-    [isaac.comm.factory :as comm-factory]
-    [isaac.comm.registry :as comm-registry]
+    [isaac.foundation.module.loader :as module-loader]
+    [isaac.agent.session.store.spi :as store]
+    [isaac.agent.comm.factory :as comm-factory]
+    [isaac.agent.comm.registry :as comm-registry]
     [isaac.http.component.runtime :as server-runtime]
-    [isaac.nexus :as nexus]
-    [isaac.fs :as fs]
-    [isaac.logger :as log]
-    [isaac.main :as main]
-    [isaac.runner.cli :as runner-cli]
-    [isaac.spec-helper :as helper]
+    [isaac.foundation.nexus :as nexus]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.main :as main]
+    [isaac.foundation.runner.cli :as runner-cli]
+    [isaac.foundation.spec-helper :as helper]
     [isaac.http.app :as app]
     [isaac.http.lifecycle :as lifecycle]
     [isaac.http.audit :as audit]
@@ -37,8 +37,8 @@
     [isaac.http.http :as server-http]
     [isaac.http.oidc-fixture :as oidc-fixture]
     [isaac.http.routes :as routes]
-    [isaac.step-tables :as match]
-    [isaac.tool.names :as names]
+    [isaac.http.step-tables :as match]
+    [isaac.agent.tool.names :as names]
     [org.httpkit.client :as http]
     [org.httpkit.server :as httpkit]))
 
@@ -83,7 +83,7 @@
 (g/after-scenario
   (fn []
     (burst/clear-state!)
-    (when-let [clear-all! (some-> (find-ns 'isaac.mcp.turns)
+    (when-let [clear-all! (some-> (find-ns 'isaac.agent.mcp.turns)
                                   (ns-resolve 'clear-all!))]
       (clear-all!))))
 
@@ -124,7 +124,7 @@
       (let [loaded-libs (var-get #'clojure.core/*loaded-libs*)]
         (dosync (alter loaded-libs disj 'isaac.http.test-comm)))
       (remove-method comm-factory/create :test-comm))
-    (when-let [create-store (try (requiring-resolve 'isaac.session.store.memory/create-store)
+    (when-let [create-store (try (requiring-resolve 'isaac.agent.session.store.memory/create-store)
                                  (catch Throwable _ nil))]
       (store/register-store! (create-store abs-dir)))))
 
@@ -624,8 +624,8 @@
                      (routes/register-route-entry! route))
                    (when run-server?
                      (g/assoc! :server-port
-                               (some-> (isaac.component.registry/instance-for :http)
-                                       isaac.component.protocol/bound-port))))]
+                               (some-> (isaac.foundation.component.registry/instance-for :http)
+                                       isaac.foundation.component.protocol/bound-port))))]
       (if-let [ct (g/get :current-time)]
         (binding [log-file/*now* ct] (start!))
         (start!)))))
@@ -658,7 +658,7 @@
     (into ["--root" (feature-root)] argv)))
 
 (defn- run-cli-with-stubbed-config!
-  "Runs `argv` through isaac.main with loader/load-config-result stubbed to
+  "Runs `argv` through isaac.foundation.main with loader/load-config-result stubbed to
    the feature root's on-disk config merged with :server-config, block!
    no-op'd, and httpkit server binding stubbed so startup/logging scenarios do
    not claim real ports. Always passes --root (the scenario root, else the
@@ -893,12 +893,12 @@
                   :parameters  {:type "object"}})))))
 
 (defn- fixture-tool-fn [_name arguments]
-  (let [exec    (requiring-resolve 'isaac.tool.exec/exec-tool)
-        present (requiring-resolve 'isaac.tool.registry/present-result)]
+  (let [exec    (requiring-resolve 'isaac.agent.tool.exec/exec-tool)
+        present (requiring-resolve 'isaac.agent.tool.registry/present-result)]
     (present (exec arguments))))
 
 (defn turn-registered-with-tools [turn-id session-key tools-str]
-  (let [register! (requiring-resolve 'isaac.mcp.turns/register!)]
+  (let [register! (requiring-resolve 'isaac.agent.mcp.turns/register!)]
     (register! turn-id {:session-key session-key
                         :tool-fn     fixture-tool-fn
                         :tools       (tools-from-csv tools-str)})))
@@ -1243,7 +1243,7 @@
 
 (defonce ^:private patched-config-path-matches?*
   (do
-    (when-let [v (try (requiring-resolve 'isaac.config.config-steps/config-path-matches)
+    (when-let [v (try (requiring-resolve 'isaac.foundation.config.config-steps/config-path-matches)
                       (catch Exception _ nil))]
       (alter-var-root v
         (fn [orig]
@@ -1253,7 +1253,7 @@
 
 (defonce ^:private patched-config-file-does-not-contain?*
   (do
-    (when-let [v (try (requiring-resolve 'isaac.config.config-steps/config-file-does-not-contain)
+    (when-let [v (try (requiring-resolve 'isaac.foundation.config.config-steps/config-file-does-not-contain)
                       (catch Exception _ nil))]
       (alter-var-root v
         (fn [orig]

@@ -1,4 +1,4 @@
-(ns isaac.pins-task-spec
+(ns isaac.http.pins-task-spec
   (:require
     [babashka.fs :as fs]
     [babashka.process :as process]

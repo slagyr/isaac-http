@@ -1,9 +1,9 @@
 (ns isaac.http.test-comm
   (:require
     [c3kit.apron.env :as env]
-    [isaac.api :as api]
-    [isaac.comm.factory :as factory]
-    [isaac.comm.protocol :as comm]))
+    [isaac.http.api :as api]
+    [isaac.agent.comm.factory :as factory]
+    [isaac.agent.comm.protocol :as comm]))
 
 (when (= "true" (env/env "ISAAC_TEST_COMM_FAIL_ON_LOAD"))
   (throw (ex-info "test comm load failed"

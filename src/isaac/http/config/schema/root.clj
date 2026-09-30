@@ -1,4 +1,4 @@
-(ns isaac.config.schema.root
+(ns isaac.http.config.schema.root
   "Views over :isaac.config/schema contributions gathered from every
    builtin manifest on the classpath."
   (:require
@@ -6,7 +6,7 @@
     [c3kit.apron.schema.path :as path]
     [clojure.edn :as edn]
     [clojure.string :as str]
-    [isaac.config.schema-base :as schema-base]))
+    [isaac.foundation.config.schema-base :as schema-base]))
 
 (def ->id schema-base/->id)
 (def schema-fields schema-base/schema-fields)

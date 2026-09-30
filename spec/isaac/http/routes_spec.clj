@@ -1,9 +1,9 @@
 (ns isaac.http.routes-spec
   (:require
-    [isaac.comm.registry :as comm-registry]
-    [isaac.fs :as fs]
+    [isaac.agent.comm.registry :as comm-registry]
+    [isaac.foundation.fs :as fs]
     [isaac.http.routes :as sut]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.nexus :as nexus]
     [speclj.core :refer :all]))
 
 (defn exact-handler [_request]

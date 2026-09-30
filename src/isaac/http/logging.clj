@@ -1,6 +1,6 @@
 (ns isaac.http.logging
   (:require
-    [isaac.log.output :as log-output]))
+    [isaac.foundation.log.output :as log-output]))
 
 (defn configure!
   "Apply :logging.output from config. Default :file activates the rotating

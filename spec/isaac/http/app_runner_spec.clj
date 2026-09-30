@@ -1,9 +1,9 @@
 (ns isaac.http.app-runner-spec
   (:require
-    [isaac.runner :as runner]
+    [isaac.foundation.runner :as runner]
     [isaac.http.app :as sut]
     [isaac.http.component.runtime :as runtime]
-    [isaac.schema.registered-in :as registered-in]
+    [isaac.foundation.schema.registered-in :as registered-in]
     [speclj.core :refer :all]))
 
 (describe "server app runner"

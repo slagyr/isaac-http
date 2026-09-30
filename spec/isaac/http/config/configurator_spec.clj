@@ -1,14 +1,14 @@
-(ns isaac.config.configurator-spec
+(ns isaac.http.config.configurator-spec
   (:require
-    [isaac.config.berths :as berths]
-    [isaac.config.schema.root :as schema]
-    [isaac.config.configurator :as sut]
-    [isaac.config.validation-lexicon :as vlex]
-    [isaac.logger :as log]
-    [isaac.fs :as fs]
-    [isaac.module.loader :as module-loader]
+    [isaac.foundation.config.berths :as berths]
+    [isaac.http.config.schema.root :as schema]
+    [isaac.foundation.config.configurator :as sut]
+    [isaac.foundation.config.validation-lexicon :as vlex]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.module.loader :as module-loader]
     [isaac.http.component.runtime :as server-runtime]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.nexus :as nexus]
     [speclj.core :refer :all]))
 
 (describe "configurator"

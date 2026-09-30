@@ -22,7 +22,7 @@ Depends on [isaac-foundation](https://github.com/slagyr/isaac-foundation) for mo
   hail, hooks, session store, …)
 - `features/server/` — HTTP host integration features (hooks, auth, reload, …)
 - `resources/isaac-manifest.edn` — builtin `:isaac.http` module manifest
-- `spec-support/` — test fixtures (`isaac.marigold`, step helpers) exported as
+- `spec-support/` — test fixtures (`isaac.foundation.marigold`, step helpers) exported as
   `io.github.slagyr/isaac-http-test-support`
 
 ## Development

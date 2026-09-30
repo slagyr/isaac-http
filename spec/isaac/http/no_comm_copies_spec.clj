@@ -6,9 +6,9 @@
 (describe "server comm ownership"
 
   (it "contains no production comm namespaces"
-    (should-not (.exists (io/file "src/isaac/comm"))))
+    (should-not (.exists (io/file "src/isaac/agent/comm"))))
 
   (it "does not shadow the Agent-owned session store protocol"
-    (should-not (.exists (io/file "src/isaac/session/store/spi.clj"))))
+    (should-not (.exists (io/file "src/isaac/agent/session/store/spi.clj"))))
 
   )

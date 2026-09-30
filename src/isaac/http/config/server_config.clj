@@ -1,6 +1,6 @@
-(ns isaac.config.server-config
+(ns isaac.http.config.server-config
   (:require
-    [isaac.config.loader :as loader]))
+    [isaac.foundation.config.loader :as loader]))
 
 (defn server-config
   "Resolve HTTP bind and process hot-reload settings from a loaded config."

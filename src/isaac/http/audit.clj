@@ -2,9 +2,9 @@
   "Last-used persistence and attention posts for principal auth events."
   (:require
     [clojure.edn :as edn]
-    [isaac.fs :as fs]
+    [isaac.foundation.fs :as fs]
     [isaac.http.burst :as burst]
-    [isaac.log.file :as log-file])
+    [isaac.foundation.log.file :as log-file])
   (:import
     (java.time Instant LocalDate ZoneOffset)))
 

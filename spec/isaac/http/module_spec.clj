@@ -1,7 +1,7 @@
 (ns isaac.http.module-spec
   (:require
-    [isaac.module.discovery :as discovery]
-    [isaac.module.protocol]
+    [isaac.foundation.module.discovery :as discovery]
+    [isaac.foundation.module.protocol]
     [isaac.http.module :as sut]
     [speclj.core :refer :all]))
 
@@ -34,4 +34,4 @@
 
   (describe "create-module"
     (it "returns a module record"
-      (should (satisfies? isaac.module.protocol/Module (sut/create-module))))))
+      (should (satisfies? isaac.foundation.module.protocol/Module (sut/create-module))))))

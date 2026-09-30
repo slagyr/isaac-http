@@ -1,4 +1,4 @@
-(ns isaac.step-tables
+(ns isaac.http.step-tables
   (:require
     [clojure.string :as str]))
 

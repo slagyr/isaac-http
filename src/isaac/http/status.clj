@@ -1,7 +1,7 @@
 (ns isaac.http.status
   (:require
     [cheshire.core :as json]
-    [isaac.component.supervisor :as supervisor]))
+    [isaac.foundation.component.supervisor :as supervisor]))
 
 (defn- subsystem-view [health]
   (into {} (map (fn [[id v]] [id (select-keys v [:status :restarts :last-error])]) health)))

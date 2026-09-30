@@ -1,11 +1,11 @@
 (ns isaac.http.burst-spec
   (:require
     [clojure.string :as str]
-    [isaac.log.file :as log-file]
-    [isaac.logger :as log]
+    [isaac.foundation.log.file :as log-file]
+    [isaac.foundation.logger :as log]
     [isaac.http.burst :as burst]
     [isaac.http.http :as http]
-    [isaac.spec-helper :as helper]
+    [isaac.foundation.spec-helper :as helper]
     [speclj.core :refer :all]))
 
 (def token "s3cr3t")

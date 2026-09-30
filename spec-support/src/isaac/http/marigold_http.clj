@@ -1,12 +1,12 @@
-(ns isaac.marigold-http
+(ns isaac.http.marigold-http
   "Server half of the Marigold test world: HTTP host manifest and
    foundation+server manifest index rebinding. Themed crew/provider names
-   and aboard helpers live in foundation's `isaac.marigold`."
+   and aboard helpers live in foundation's `isaac.foundation.marigold`."
   (:require
-    [isaac.config.schema-compose :as schema-compose]
-    [isaac.config.schema.root :as config-schema]
-    [isaac.marigold :as marigold]
-    [isaac.module.loader :as module-loader]
+    [isaac.foundation.config.schema-compose :as schema-compose]
+    [isaac.http.config.schema.root :as config-schema]
+    [isaac.foundation.marigold :as marigold]
+    [isaac.foundation.module.loader :as module-loader]
     [speclj.core :as speclj]))
 
 (def baseline-server-manifest
@@ -55,7 +55,7 @@
   (binding [module-loader/*foundation-index-override* nil]
     (reset-module-state!)
     (module-loader/activate-foundation!)
-    ((requiring-resolve 'isaac.llm.api.grover/install-test-fixture!))
+    ((requiring-resolve 'isaac.agent.llm.api.grover/install-test-fixture!))
     (thunk)))
 
 (defmacro with-real-manifest

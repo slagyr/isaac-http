@@ -1,12 +1,12 @@
 (ns isaac.http.runtime
   (:require
     [clojure.string :as str]
-    [isaac.config.loader :as loader]
-    [isaac.config.root :as root]
-    [isaac.fs :as fs]
-    [isaac.module.loader :as module-loader]
-    [isaac.nexus :as nexus]
-    [isaac.shell :as shell]))
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.root :as root]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.module.loader :as module-loader]
+    [isaac.foundation.nexus :as nexus]
+    [isaac.foundation.shell :as shell]))
 
 (def missing-clojure-msg
   "--runtime jvm requires the clojure CLI (brew install clojure)")
@@ -53,7 +53,7 @@
   (let [root-dir    (root/default-root opts)
         launch-deps (launch-deps-for opts)
         server-args (strip-runtime-flag raw-args)]
-    (into ["clojure" "-Sdeps" (pr-str launch-deps) "-M" "-m" "isaac.main"]
+    (into ["clojure" "-Sdeps" (pr-str launch-deps) "-M" "-m" "isaac.foundation.main"]
           (concat (when (and root-dir (seq (str root-dir)))
                     ["--root" root-dir])
                   ["server"]

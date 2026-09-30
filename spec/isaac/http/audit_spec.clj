@@ -1,9 +1,9 @@
 (ns isaac.http.audit-spec
   (:require
-    [isaac.fs :as fs]
+    [isaac.foundation.fs :as fs]
     [isaac.http.audit :as sut]
     [isaac.http.burst :as burst]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.nexus :as nexus]
     [speclj.core :refer :all]))
 
 (describe "auth audit"

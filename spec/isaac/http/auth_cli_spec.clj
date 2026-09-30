@@ -1,12 +1,12 @@
 (ns isaac.http.auth-cli-spec
   (:require
     [clojure.string :as str]
-    [isaac.config.loader :as loader]
-    [isaac.config.mutate :as mutate]
-    [isaac.fs :as fs]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.mutate :as mutate]
+    [isaac.foundation.fs :as fs]
     [isaac.http.auth :as auth]
     [isaac.http.auth-cli :as sut]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.nexus :as nexus]
     [speclj.core :refer :all]))
 
 (def root "/test/auth-cli")

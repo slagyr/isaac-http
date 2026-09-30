@@ -1,6 +1,6 @@
 {:id      :isaac.http.test-comm
  :version "0.0.0"
- :factory isaac.module.protocol/module
+ :factory isaac.foundation.module.protocol/module
 
  :isaac.agent/comm
  {:test-comm {:namespace    isaac.http.test-comm

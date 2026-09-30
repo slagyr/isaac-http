@@ -1,15 +1,15 @@
 (ns isaac.http.production-boot-spec
   (:require
-    [isaac.component.factory :as component-factory]
-    [isaac.component.protocol :as component]
-    [isaac.component.runtime :as component-runtime]
-    [isaac.fs :as fs]
-    [isaac.logger :as log]
-    [isaac.nexus :as nexus]
-    [isaac.module.discovery :as discovery]
-    [isaac.runner :as runner]
-    [isaac.runner.cli :as runner-cli]
-    [isaac.spec-helper :as helper]
+    [isaac.foundation.component.factory :as component-factory]
+    [isaac.foundation.component.protocol :as component]
+    [isaac.foundation.component.runtime :as component-runtime]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.nexus :as nexus]
+    [isaac.foundation.module.discovery :as discovery]
+    [isaac.foundation.runner :as runner]
+    [isaac.foundation.runner.cli :as runner-cli]
+    [isaac.foundation.spec-helper :as helper]
     [speclj.core :refer :all]))
 
 (defonce events (atom []))

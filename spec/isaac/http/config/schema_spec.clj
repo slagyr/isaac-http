@@ -1,4 +1,4 @@
-(ns isaac.config.schema-spec
+(ns isaac.http.config.schema-spec
   (:require
     [c3kit.apron.schema :as schema]
     [clojure.edn :as edn]

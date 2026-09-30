@@ -2,8 +2,8 @@
   "isaac http auth mint|rotate|revoke|list — principal secrets."
   (:require
     [clojure.string :as str]
-    [isaac.config.loader :as loader]
-    [isaac.config.mutate :as mutate]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.mutate :as mutate]
     [isaac.http.audit :as audit]
     [isaac.http.auth :as auth]
     [isaac.http.oidc :as oidc])

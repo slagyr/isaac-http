@@ -1,23 +1,23 @@
-(ns isaac.configurator-steps
+(ns isaac.http.configurator-steps
   (:require
     [clojure.edn :as edn]
     [clojure.string :as str]
     [gherclj.core :as g :refer [defgiven defthen defwhen helper!]]
-    [isaac.comm.registry :as comm-registry]
-    [isaac.config.berths :as berths]
-    [isaac.config.loader :as loader]
-    [isaac.config.runtime :as runtime]
+    [isaac.agent.comm.registry :as comm-registry]
+    [isaac.foundation.config.berths :as berths]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.config.runtime :as runtime]
     [isaac.http.component.runtime :as server-runtime]
-    [isaac.reconfigurable :as reconfigurable]
-    [isaac.logger :as log]
+    [isaac.foundation.reconfigurable :as reconfigurable]
+    [isaac.foundation.logger :as log]
     [isaac.foundation.root-steps :as froot]
-    [isaac.fs :as fs]
-    [isaac.module.loader :as module-loader]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.module.loader :as module-loader]
     [isaac.http.app :as app]
-    [isaac.spec-helper :as helper]
-    [isaac.nexus :as nexus]))
+    [isaac.foundation.spec-helper :as helper]
+    [isaac.foundation.nexus :as nexus]))
 
-(helper! isaac.configurator-steps)
+(helper! isaac.http.configurator-steps)
 
 (def ^:private test-comm-module-id :isaac.http.test-comm)
 (def ^:private test-comm-module-coord {:local/root "spec-support"})
@@ -247,19 +247,19 @@
 (defn server-not-running []
   (g/should-not (app/running?)))
 
-(defgiven "default Grover setup" isaac.configurator-steps/default-grover-setup
+(defgiven "default Grover setup" isaac.http.configurator-steps/default-grover-setup
   "In-memory Isaac root at target/test-state with hot-reload enabled for
    comm lifecycle scenarios.")
 
-(defgiven "the {impl:string} comm is registered" isaac.configurator-steps/comm-is-registered
+(defgiven "the {impl:string} comm is registered" isaac.http.configurator-steps/comm-is-registered
   "Loads the comm impl namespace and registers its factory in the comm registry.")
 
-(defthen "the comm {name:string} exists with state:" isaac.configurator-steps/comm-exists-with-state)
+(defthen "the comm {name:string} exists with state:" isaac.http.configurator-steps/comm-exists-with-state)
 
-(defthen "the comm {name:string} does not exist" isaac.configurator-steps/comm-does-not-exist)
+(defthen "the comm {name:string} does not exist" isaac.http.configurator-steps/comm-does-not-exist)
 
-(defwhen "config is updated:" isaac.configurator-steps/config-updated
+(defwhen "config is updated:" isaac.http.configurator-steps/config-updated
   "Delta-merges path/value rows into config/isaac.edn and notifies the
    bound config change source.")
 
-(defthen "the Isaac server is not running" isaac.configurator-steps/server-not-running)
+(defthen "the Isaac server is not running" isaac.http.configurator-steps/server-not-running)

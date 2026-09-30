@@ -3,8 +3,8 @@
     [isaac.http.auth]
     [isaac.http.http :as sut]
     [isaac.http.oidc]
-    [isaac.logger :as log]
-    [isaac.spec-helper :as helper]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.spec-helper :as helper]
     [speclj.core :refer :all]))
 
 (describe "HTTP handler"

@@ -1,11 +1,11 @@
 (ns isaac.http.server-steps-spec
   (:require
     [gherclj.core :as g]
-    [isaac.config.runtime :as runtime]
+    [isaac.foundation.config.runtime :as runtime]
     [isaac.foundation.fs-steps :as ffs]
-    [isaac.fs :as fs]
-    [isaac.marigold :as marigold]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.marigold :as marigold]
+    [isaac.foundation.nexus :as nexus]
     [isaac.http.app :as app]
     [isaac.http.server-steps :as sut]
     [speclj.core :refer :all])

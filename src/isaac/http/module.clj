@@ -1,8 +1,8 @@
 (ns isaac.http.module
   (:require
     [isaac.http.cli]
-    [isaac.module.protocol :as module]
-    [isaac.module.loader :as module-loader]))
+    [isaac.foundation.module.protocol :as module]
+    [isaac.foundation.module.loader :as module-loader]))
 
 (defn create-module []
   (module/module))

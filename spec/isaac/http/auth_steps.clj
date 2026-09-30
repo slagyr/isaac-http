@@ -3,8 +3,8 @@
     [cheshire.core :as json]
     [clojure.string :as str]
     [gherclj.core :as g :refer [defgiven defthen helper!]]
-    [isaac.fs :as fs]
-    [isaac.nexus :as nexus]))
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.nexus :as nexus]))
 
 (helper! isaac.http.auth-steps)
 

@@ -3,8 +3,8 @@
    On by default. Off only with :http :burst :enabled false. Memory only; no transcript, no disk."
   (:require
     [clojure.string :as str]
-    [isaac.log.file :as log-file]
-    [isaac.logger :as log]))
+    [isaac.foundation.log.file :as log-file]
+    [isaac.foundation.logger :as log]))
 
 (def defaults
   {:enabled     true
@@ -79,9 +79,9 @@
      :throttled-logged? (:throttled-logged? st)}))
 
 (defn delivery-enqueue-fn
-  "Agent-owned. Nil when isaac.comm.delivery.queue is not on the classpath."
+  "Agent-owned. Nil when isaac.agent.comm.delivery.queue is not on the classpath."
   []
-  (try (requiring-resolve 'isaac.comm.delivery.queue/enqueue!)
+  (try (requiring-resolve 'isaac.agent.comm.delivery.queue/enqueue!)
        (catch Throwable _ nil)))
 
 (defn enqueue-attention! [cfg content]

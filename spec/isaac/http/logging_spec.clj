@@ -1,10 +1,10 @@
 (ns isaac.http.logging-spec
   (:require
     [clojure.string :as str]
-    [isaac.fs :as fs]
-    [isaac.log.file :as lfile]
-    [isaac.logger :as log]
-    [isaac.nexus :as nexus]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.log.file :as lfile]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.nexus :as nexus]
     [isaac.http.logging :as sut]
     [speclj.core :refer :all]))
 

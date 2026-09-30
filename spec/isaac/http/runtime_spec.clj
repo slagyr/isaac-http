@@ -1,7 +1,7 @@
 (ns isaac.http.runtime-spec
   (:require
-    [isaac.config.loader :as loader]
-    [isaac.module.loader :as module-loader]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.module.loader :as module-loader]
     [isaac.http.runtime :as sut]
     [speclj.core :refer :all]))
 
@@ -73,11 +73,11 @@
 
   (describe "trampoline-argv"
 
-    (it "builds clojure -Sdeps ... -M -m isaac.main --root <root> server <args>"
+    (it "builds clojure -Sdeps ... -M -m isaac.foundation.main --root <root> server <args>"
       (let [launch-deps {:paths ["/seed/src"] :deps {'marigold.app/marigold.app {:local/root "modules/marigold.app"}}}]
         (with-redefs [loader/load-config-result (fn [& _] {:config {:modules {}}})
                       module-loader/config->launch-deps (fn [& _] launch-deps)]
-          (should= ["clojure" "-Sdeps" (pr-str launch-deps) "-M" "-m" "isaac.main"
+          (should= ["clojure" "-Sdeps" (pr-str launch-deps) "-M" "-m" "isaac.foundation.main"
                     "--root" "/tmp/root" "server" "--port" "4000"]
                    (sut/trampoline-argv {:root "/tmp/root"} ["--runtime" "jvm" "--port" "4000"]))))))
 
@@ -107,6 +107,6 @@
                       module-loader/config->launch-deps (fn [& _] {:deps {}})
                       sut/exec-trampoline! (fn [argv] (reset! exec-args argv))]
           (sut/maybe-trampoline! {:root "/tmp/root" :runtime "jvm"} ["--runtime" "jvm" "--port" "4000"])
-          (should= ["clojure" "-Sdeps" "{:deps {}}" "-M" "-m" "isaac.main"
+          (should= ["clojure" "-Sdeps" "{:deps {}}" "-M" "-m" "isaac.foundation.main"
                     "--root" "/tmp/root" "server" "--port" "4000"]
                    @exec-args))))))

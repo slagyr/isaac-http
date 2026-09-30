@@ -2,8 +2,8 @@
   (:require
     [cheshire.core :as json]
     [isaac.http.status :as sut]
-    [isaac.component.protocol :as protocol]
-    [isaac.component.supervisor :as supervisor]
+    [isaac.foundation.component.protocol :as protocol]
+    [isaac.foundation.component.supervisor :as supervisor]
     [speclj.core :refer :all])
   (:import
     (java.time Instant)))

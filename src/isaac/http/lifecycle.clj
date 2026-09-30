@@ -1,7 +1,7 @@
 (ns isaac.http.lifecycle
   (:require
     [isaac.foundation.version :as version]
-    [isaac.logger :as log]
+    [isaac.foundation.logger :as log]
     [isaac.http.runtime :as runtime])
   (:import
     (java.lang ProcessHandle)))

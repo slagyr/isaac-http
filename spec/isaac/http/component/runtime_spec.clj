@@ -1,12 +1,12 @@
 (ns isaac.http.component.runtime-spec
   (:require
-    [isaac.component.factory :as component-factory]
-    [isaac.component.protocol :as component]
-    [isaac.component.registry :as component-registry]
-    [isaac.config.runtime :as runtime]
-    [isaac.logger :as log]
-    [isaac.runner :as runner]
-    [isaac.spec-helper :as helper]
+    [isaac.foundation.component.factory :as component-factory]
+    [isaac.foundation.component.protocol :as component]
+    [isaac.foundation.component.registry :as component-registry]
+    [isaac.foundation.config.runtime :as runtime]
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.runner :as runner]
+    [isaac.foundation.spec-helper :as helper]
     [isaac.http.component.runtime :as sut]
     [speclj.core :refer :all]))
 

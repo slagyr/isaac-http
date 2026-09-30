@@ -1,14 +1,14 @@
-(ns isaac.manifest-self-consistency-spec
+(ns isaac.http.manifest-self-consistency-spec
   (:require
     [clojure.edn :as edn]
-    [isaac.config.berths :as berths]
-    [isaac.config.validation-lexicon :as vlex]
-    [isaac.fs :as fs]
-    [isaac.nexus :as nexus]
-    [isaac.module.loader :as module-loader]
-    [isaac.config.validation]
-    [isaac.schema.meta]
-    [isaac.schema.registered-in]
+    [isaac.foundation.config.berths :as berths]
+    [isaac.foundation.config.validation-lexicon :as vlex]
+    [isaac.foundation.fs :as fs]
+    [isaac.foundation.nexus :as nexus]
+    [isaac.foundation.module.loader :as module-loader]
+    [isaac.foundation.config.validation]
+    [isaac.foundation.schema.meta]
+    [isaac.foundation.schema.registered-in]
     [clojure.java.io :as io]
     [speclj.core :refer :all]))
 
@@ -63,7 +63,7 @@
   (it "every inline :isaac.config/schema contribution meta-validates"
     (doseq [[config-key {:keys [schema]}] (schema-contributions)]
       (should (map? schema))
-      (should-not-throw (isaac.schema.meta/conform-spec! schema))))
+      (should-not-throw (isaac.foundation.schema.meta/conform-spec! schema))))
 
   (it "no config path is claimed twice — one schema owner per path (berth :config XOR :isaac.config/schema factory)"
     ;; isaac-mdj2: register contributed existence refs (:crew-exists?, from

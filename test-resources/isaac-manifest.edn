@@ -1,7 +1,7 @@
 {:id       :isaac.agent.schema-ownership
  :version  "0.0.0"
  :builtin? true
- :factory  isaac.module.protocol/module
+ :factory  isaac.foundation.module.protocol/module
  :description "Test-only schema fragments so configurator ownership specs see snapshot-only entity collections on the server classpath."
 
  ;; isaac-mdj2: :crew, :models, :providers, and :comms used to be faked here

@@ -1,11 +1,11 @@
 (ns isaac.http.app
   (:require
     [clojure.string :as str]
-    [isaac.config.loader :as loader]
+    [isaac.foundation.config.loader :as loader]
     [isaac.http.component.runtime :as runtime]
-    [isaac.logger :as log]
-    [isaac.runner :as runner]
-    [isaac.schema.registered-in :as registered-in]))
+    [isaac.foundation.logger :as log]
+    [isaac.foundation.runner :as runner]
+    [isaac.foundation.schema.registered-in :as registered-in]))
 
 (defn running? []
   (runner/running?))

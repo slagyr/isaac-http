@@ -4,10 +4,10 @@
     [isaac.http.audit :as audit]
     [isaac.http.auth :as auth]
     [isaac.http.oidc :as oidc]
-    [isaac.logger :as log]
+    [isaac.foundation.logger :as log]
     [isaac.http.burst :as burst]
     [isaac.http.routes :as routes]
-    [isaac.nexus :as nexus]))
+    [isaac.foundation.nexus :as nexus]))
 
 (defn loopback-host? [host]
   (boolean

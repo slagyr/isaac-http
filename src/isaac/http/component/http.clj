@@ -1,10 +1,10 @@
 (ns isaac.http.component.http
   (:require
     [c3kit.apron.refresh :as refresh]
-    [isaac.component.factory :as component]
-    [isaac.component.protocol :as protocol]
-    [isaac.config.loader :as loader]
-    [isaac.logger :as log]
+    [isaac.foundation.component.factory :as component]
+    [isaac.foundation.component.protocol :as protocol]
+    [isaac.foundation.config.loader :as loader]
+    [isaac.foundation.logger :as log]
     [isaac.http.http :as http]
     [org.httpkit.server :as httpkit]))
 

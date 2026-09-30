@@ -1,10 +1,10 @@
 (ns isaac.http.component.http-spec
   (:require
-    [isaac.component.factory :as component]
-    [isaac.component.protocol :as protocol]
-    [isaac.config.loader :as loader]
+    [isaac.foundation.component.factory :as component]
+    [isaac.foundation.component.protocol :as protocol]
+    [isaac.foundation.config.loader :as loader]
     [isaac.http.component.http]
-    [isaac.logger :as log]
+    [isaac.foundation.logger :as log]
     [org.httpkit.server :as httpkit]
     [speclj.core :refer :all]))
 

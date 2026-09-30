@@ -1,7 +1,7 @@
 (ns isaac.http.test-store
   "Minimal in-memory SessionStore for server-only specs — no agent dep."
   (:require
-    [isaac.session.store.spi :as store]))
+    [isaac.agent.session.store.spi :as store]))
 
 (defn create-store [_root]
   (let [sessions* (atom {})]
