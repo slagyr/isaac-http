@@ -76,8 +76,11 @@
                                                                                      :expiring  {:type :boolean :description "Post attention once a day for a principal expiring within 7 days"}}}}}
                                   :oidc       {:type        :map
                                                :description "Generic OIDC/JWT verification knobs. Trust rules live on contributing modules."
+                                               :default     {}
+                                               :coercions   [[:default {}]]
                                                :schema      {:skew-s {:type :int :default 60 :coercions [[:default 60]] :description "Clock skew in seconds for exp/nbf/iat"}
-                                                             :jwks-cache-s {:type :int :default 3600 :coercions [[:default 3600]] :description "JWKS cache TTL in seconds"}}}
+                                                             :jwks-cache-s {:type :int :default 3600 :coercions [[:default 3600]] :description "JWKS cache TTL in seconds"}
+                                                             :jwks-alert-threshold {:type :int :default 1 :coercions [[:default 1]] :description "Consecutive JWKS-unreachable refusals before posting an attention alert"}}}
                                   :burst      {:type        :map
                                                :description "Unauthenticated burst control. On by default; :enabled false turns it off."
                                                :default     {:enabled true :threshold 10 :window-ms 60000 :cooldown-ms 600000 :throttle? true :notify? true}

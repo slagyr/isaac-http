@@ -64,7 +64,6 @@ Feature: Server-wide inbound HTTP auth
     When the client sends GET "/status"
     Then the response status is 200
 
-  @wip
   Scenario: A non-loopback bind with no auth starts and warns
     Given config:
       | http.host | 0.0.0.0 |
@@ -75,7 +74,6 @@ Feature: Server-wide inbound HTTP auth
       | level | event               | host    | message                      |
       | warn  | :server/auth-absent | 0.0.0.0 | .*no auth configured.*open.* |
 
-  @wip
   Scenario: A non-loopback bind with only principals starts without the warning
     Given principal "ci" is configured with secret "ci-secret" and scopes "*"
     And config:

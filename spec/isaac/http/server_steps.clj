@@ -1053,6 +1053,13 @@
       (g/should-not (str/includes? (pr-str entry) secret)))))
 
 (defn config-reloaded []
+  ;; A real running server hot-reloads because its OS-level file watcher sees
+  ;; ANY process's write to isaac.edn, regardless of who wrote it. The feature
+  ;; harness's in-memory change source has no such visibility into a write
+  ;; made by production code outside the Given/When helpers here (e.g. a CLI
+  ;; mutation like `isaac http auth mint`) — so this step stands in for the
+  ;; disk watcher noticing the canonical config file changed.
+  (notify-config-change! (isaac-file-path "isaac.edn"))
   (g/should (map? (current-server-config))))
 
 ;; endregion ^^^^^ Log Assertions ^^^^^

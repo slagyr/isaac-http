@@ -95,7 +95,7 @@
         (burst/enqueue-attention! cfg (str "first use of principal " pname))))))
 
 (defn- jwks-health-threshold [cfg]
-  (or (get-in cfg [:http :oidc :jwks-alert-threshold]) 1))
+  (get-in cfg [:http :oidc :jwks-alert-threshold]))
 
 (defn note-refusal! [cfg principal reason remembered]
   (let [pname (or (principal-name principal) remembered)]

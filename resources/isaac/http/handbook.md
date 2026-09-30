@@ -58,15 +58,14 @@ logs, below) confirms the process is up and its subsystems are healthy.
 
 ### Troubleshooting
 
-- **The server refuses to start, logging `:server/auth-required`.** A
-  non-loopback `:http :host` (anything other than `localhost`, `::1`, or a
-  `127.*` address) requires a legacy `:http :auth :token` to be set —
-  configuring only `:http :auth :principals` does **not** satisfy this
-  startup gate by itself; the check looks at `:token` specifically. Until
-  that's resolved `[verify: intentional vs. gap — isaac-http should
-  probably also accept a non-empty :principals map here]`, bind a
-  non-loopback host with a `:http :auth :token` set (it still works
-  alongside per-principal auth; see Inbound auth, below) or keep the host
+- **The server starts on a non-loopback bind and logs `:server/auth-absent`.**
+  A non-loopback `:http :host` (anything other than `localhost`, `::1`, or a
+  `127.*` address) with no auth configured at all — no `:http :auth :token`,
+  no `:http :auth :principals`, no OIDC/identity rule — is not refused: an
+  intranet server may run without auth. isaac-http logs this one warning at
+  startup (`:host` and a message noting the server is open to any request)
+  and starts anyway. Configure a token, a principal, or an identity rule (see
+  Inbound auth and OIDC/JWT identity, below) to silence it, or keep the host
   loopback and put a reverse proxy or tunnel in front.
 - **The server refuses to start, logging `:auth/config-dropped`.** Some
   earlier config write left `:http :auth` malformed enough that schema
@@ -187,12 +186,15 @@ matching and, finding nothing there either, is refused `:unknown`.
 ```
 config set http.oidc.skew-s 90
 config set http.oidc.jwks-cache-s 1800
+config set http.oidc.jwks-alert-threshold 3
 ```
 
 `config:http.oidc.skew-s` (default 60s) tolerates clock drift on
 `exp`/`nbf`/`iat`. `config:http.oidc.jwks-cache-s` (default 3600s) bounds how
 long a fetched JWKS document is cached absent a `Cache-Control: max-age`
-from the issuer, which wins when present.
+from the issuer, which wins when present. `config:http.oidc.jwks-alert-threshold`
+(default 1) sets how many consecutive `:jwks-unavailable` refusals happen
+before an attention notice posts (see Troubleshooting, below).
 
 **How to verify.** `isaac http auth list` includes OIDC-derived rows,
 labeled `(oidc)`, alongside bearer principals.
@@ -204,12 +206,9 @@ labeled `(oidc)`, alongside bearer principals.
   match); an unknown `kid` triggers one automatic JWKS refresh before
   giving up.
 - **The issuer is unreachable and every JWT for it now fails.** That's
-  `:jwks-unavailable`, logged and, after enough consecutive failures,
-  posted as an attention notice `[verify: threshold config key
-  http.oidc.jwks-alert-threshold is read by the code but not currently
-  declared in this module's config schema — treat it as internal until a
-  schema entry ships]`. A verified JWT from the same issuer afterward
-  re-arms the alert.
+  `:jwks-unavailable`, logged and, after `config:http.oidc.jwks-alert-threshold`
+  (default 1) consecutive failures, posted once as an attention notice. A
+  verified JWT from the same issuer afterward re-arms the alert.
 - **A rule with a config-ref `:audience`/`:issuer`/`:claims` never
   matches.** Check that the referenced config path actually resolves —
   an unresolved ref makes the whole rule inert, not partially applied.

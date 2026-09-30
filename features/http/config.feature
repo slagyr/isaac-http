@@ -78,7 +78,6 @@ Feature: HTTP listener config
       | key                       | value                                     |
       | server.suspend-timeout-ms | retired.*use :bridge :suspend-timeout-ms.* |
 
-  @wip
   Scenario: the JWKS alert threshold is declared with a default of 1
     Given config file "isaac.edn" containing:
       """
@@ -90,7 +89,6 @@ Feature: HTTP listener config
       | key                            | value |
       | http.oidc.jwks-alert-threshold | 1     |
 
-  @wip
   Scenario: the JWKS alert threshold accepts a configured value
     Given config file "isaac.edn" containing:
       """

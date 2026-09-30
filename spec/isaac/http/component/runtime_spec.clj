@@ -23,6 +23,29 @@
                                    :config-warnings [{:key "http.auth.token" :value "unknown key"}]}))
     (should (seq (filter #(= :auth/config-dropped (:event %)) @log/captured-logs))))
 
+  (it "starts and warns when a non-loopback bind has no auth configured at all"
+    (should (sut/valid-start? {:http {:host "0.0.0.0"}} {}))
+    (let [entry (first (filter #(= :server/auth-absent (:event %)) @log/captured-logs))]
+      (should-not-be-nil entry)
+      (should= "0.0.0.0" (:host entry))
+      (should (re-find #"(?i)no auth configured.*open" (:message entry)))))
+
+  (it "starts without the warning when a token is configured on a non-loopback bind"
+    (should (sut/valid-start? {:http {:host "0.0.0.0" :auth {:token "s3cr3t"}}} {}))
+    (should (empty? (filter #(= :server/auth-absent (:event %)) @log/captured-logs))))
+
+  (it "starts without the warning when principals are configured on a non-loopback bind"
+    (should (sut/valid-start? {:http {:host "0.0.0.0" :auth {:principals {:ci {:hash "x" :scopes #{:*}}}}}} {}))
+    (should (empty? (filter #(= :server/auth-absent (:event %)) @log/captured-logs))))
+
+  (it "starts without the warning when identity trust rules are configured on a non-loopback bind"
+    (should (sut/valid-start? {:http {:host "0.0.0.0" :auth {:identity {:some-issuer {:issuer "https://example.com"}}}}} {}))
+    (should (empty? (filter #(= :server/auth-absent (:event %)) @log/captured-logs))))
+
+  (it "does not warn on a loopback bind with no auth configured"
+    (should (sut/valid-start? {:http {:host "127.0.0.1"}} {}))
+    (should (empty? (filter #(= :server/auth-absent (:event %)) @log/captured-logs))))
+
   (it "starts through the same runner used by the server command"
     (let [manifest     (read-string (slurp "resources/isaac-manifest.edn"))
           module-index {:isaac.http {:manifest manifest}}

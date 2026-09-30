@@ -57,10 +57,15 @@
                (= "unknown key" value)))
         warnings))
 
+(defn- auth-configured? [config]
+  (let [auth (get-in config [:http :auth])]
+    (or (seq (:token auth))
+        (seq (:principals auth))
+        (seq (:identity auth)))))
+
 (defn valid-start? [config opts]
   (let [host          (or (:host opts) (get-in config [:http :host]) "127.0.0.1")
         start-http?   (not (false? (:start-http-server? opts)))
-        auth-token    (get-in config [:http :auth :token])
         dropped?      (http-auth-dropped? (:config-warnings opts))]
     (cond
       dropped?
@@ -72,14 +77,14 @@
       (not start-http?)
       true
 
-      (or (http/loopback-host? host) (seq auth-token))
+      (or (http/loopback-host? host) (auth-configured? config))
       true
 
       :else
-      (do (log/error :server/auth-required
-                     :host host
-                     :message "missing :http :auth :token for non-loopback bind")
-          false))))
+      (do (log/warn :server/auth-absent
+                    :host host
+                    :message "no auth configured for a non-loopback bind — the server is open to any request")
+          true))))
 
 (defmethod component-factory/create :server-runtime
   [_ {:keys [config module-index opts root]}]
