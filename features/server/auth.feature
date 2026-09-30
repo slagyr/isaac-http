@@ -10,9 +10,9 @@ Feature: Server-wide inbound HTTP auth
   onto loopback, so "loopback bind" is not a safe proxy for "local
   process." Token presence == enforcement, no exceptions.
 
-  A token-less server is only allowed when bound to a loopback host
-  (anything `InetAddress/isLoopbackAddress` reports — 127.0.0.0/8,
-  `::1`, etc.). Non-loopback bind without a token refuses to start.
+  A server with no auth configured still starts. Bound beyond loopback
+  (anything `InetAddress/isLoopbackAddress` doesn't report), it logs a
+  :server/auth-absent warning, since it is open to any request (isaac-x9y5).
 
   Background:
     Given an Isaac root at "target/test-state"
@@ -63,15 +63,6 @@ Feature: Server-wide inbound HTTP auth
     And the Isaac server is started
     When the client sends GET "/status"
     Then the response status is 200
-
-  Scenario: Non-loopback bind without a token refuses to start
-    Given config:
-      | http.host | 0.0.0.0 |
-    When the Isaac server is started
-    Then the server failed to start
-    And the log has entries matching:
-      | level | event                  | message                                |
-      | error | :server/auth-required  | .*:http :auth :token.*non-loopback.* |
 
   @wip
   Scenario: A non-loopback bind with no auth starts and warns
