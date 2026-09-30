@@ -40,8 +40,7 @@
     [isaac.step-tables :as match]
     [isaac.tool.names :as names]
     [org.httpkit.client :as http]
-    [org.httpkit.server :as httpkit]
-    [taoensso.timbre :as timbre]))
+    [org.httpkit.server :as httpkit]))
 
 (helper! isaac.http.server-steps)
 
@@ -88,12 +87,11 @@
                                   (ns-resolve 'clear-all!))]
       (clear-all!))))
 
-;; c3kit.apron.refresh logs via timbre and forces :info level, bypassing
-;; isaac.logger. Disable timbre's default println appender at step-namespace
-;; load time so c3kit's internal logs (">>>>> Stopping App", etc.) don't
-;; pollute feature test output. Gherclj loads isaac.features.steps.* for
-;; every run, so this silences timbre for the whole feature suite.
-(timbre/merge-config! {:appenders {:println {:enabled? false}}})
+;; c3kit.apron 3.2.1 dropped Timbre for a hand-rolled logger (c3kit.apron.log);
+;; c3kit.apron.app's Starting/Stopping App banners now go through that logger's
+;; own `with-level :info`, which forces its own level and isn't reachable from
+;; here. The old Timbre appender silencer this replaced is gone with Timbre;
+;; those banners print during feature runs again — cosmetic noise only.
 
 ;; The foundation isaac-file write steps (moved to isaac.foundation.fs-steps)
 ;; fire post-write hooks; register the server-side config-change notification
