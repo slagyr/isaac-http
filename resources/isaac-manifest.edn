@@ -86,20 +86,4 @@
                                                              :notify?     {:type :boolean :default true :coercions [[:default true]] :description "Post attention on burst start and end"}
                                                              :throttle?   {:type :boolean :default true :coercions [[:default true]] :description "Answer flagged clients with 429"}}}
                                   :host  {:type :string :description "Bind host"}
-                                  :port  {:type :int :description "Bind port"}}}}
-
-  :comms {:schema {:name        "comms table"
-                   :type        :map
-                   :description "Communication channel configurations (map of name -> comm config)"
-                   :key-spec    {:type :id}
-                   :value-spec  {:name           :comm
-                                 :type           :map
-                                 :factory        isaac.comm.factory/create!
-                                 :dynamic-schema {:berth :isaac.agent/comm :path [:extra-schema]}
-                                 :schema         {:type {:type         :id
-                                                         :options-from :comms
-                                                         :description  "Manifest comm kind to instantiate"
-                                                         :validations  [[:registered-in? :isaac.agent/comm [:comms]]]}
-                                                  :crew {:type        :id
-                                                         :description "Crew id this comm routes into"
-                                                         :validations [:crew-exists?]}}}}}}}
+                                  :port  {:type :int :description "Bind port"}}}}}}
