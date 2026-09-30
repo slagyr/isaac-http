@@ -77,3 +77,27 @@ Feature: HTTP listener config
     Then the config has validation errors matching:
       | key                       | value                                     |
       | server.suspend-timeout-ms | retired.*use :bridge :suspend-timeout-ms.* |
+
+  @wip
+  Scenario: the JWKS alert threshold is declared with a default of 1
+    Given config file "isaac.edn" containing:
+      """
+      {:http {:host "127.0.0.1"}}
+      """
+    When the config is loaded
+    Then the config has no validation errors
+    And the loaded config has:
+      | key                            | value |
+      | http.oidc.jwks-alert-threshold | 1     |
+
+  @wip
+  Scenario: the JWKS alert threshold accepts a configured value
+    Given config file "isaac.edn" containing:
+      """
+      {:http {:oidc {:jwks-alert-threshold 5}}}
+      """
+    When the config is loaded
+    Then the config has no validation errors
+    And the loaded config has:
+      | key                            | value |
+      | http.oidc.jwks-alert-threshold | 5     |

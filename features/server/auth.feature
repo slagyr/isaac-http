@@ -73,6 +73,29 @@ Feature: Server-wide inbound HTTP auth
       | level | event                  | message                                |
       | error | :server/auth-required  | .*:http :auth :token.*non-loopback.* |
 
+  @wip
+  Scenario: A non-loopback bind with no auth starts and warns
+    Given config:
+      | http.host | 0.0.0.0 |
+    And the Isaac server is started
+    When the client sends GET "/status"
+    Then the response status is 200
+    And the log has entries matching:
+      | level | event               | host    | message                      |
+      | warn  | :server/auth-absent | 0.0.0.0 | .*no auth configured.*open.* |
+
+  @wip
+  Scenario: A non-loopback bind with only principals starts without the warning
+    Given principal "ci" is configured with secret "ci-secret" and scopes "*"
+    And config:
+      | http.host | 0.0.0.0 |
+    And the Isaac server is started
+    When the client sends GET "/status" with header "Authorization: Bearer ci-secret"
+    Then the response status is 200
+    And the log has no entries matching:
+      | event               |
+      | :server/auth-absent |
+
   Scenario: Token supports ${ENV_VAR} substitution from the state dir env
     Given the env var "ISAAC_AUTH_TOKEN" is set to "envt0ken"
     And config:
