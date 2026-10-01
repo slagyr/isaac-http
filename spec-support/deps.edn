@@ -1,8 +1,8 @@
 {:paths ["src" "resources"]
  :deps  {io.github.slagyr/isaac-foundation-spec {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                                 :git/sha "06d58b75bc52b3e118dc8e81569096de2532a0d4"
+                                                 :git/sha "98de59aa49f3950b5f6d5189e383249c2a1861c0"
                                                  :deps/root "spec"}
          io.github.slagyr/isaac-foundation-test-support {:git/url "https://github.com/slagyr/isaac-foundation.git"
-                                                         :git/sha "06d58b75bc52b3e118dc8e81569096de2532a0d4"
+                                                         :git/sha "98de59aa49f3950b5f6d5189e383249c2a1861c0"
                                                          :deps/root "spec-support"}
          speclj/speclj                          {:mvn/version "3.13.0"}}}
